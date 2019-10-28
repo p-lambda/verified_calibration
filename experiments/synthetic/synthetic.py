@@ -236,7 +236,7 @@ def plot_curve(f, save_file, l=1e-8, u=1.0-1e-8):
 
 if __name__ == "__main__":
     if not os.path.exists('./saved_files'):
-        os.mkdir('saved_files')
+        os.mkdir('./saved_files')
     if not os.path.exists('./saved_files/synthetic/'):
         os.mkdir('./saved_files/synthetic/')
     prefix = './saved_files/synthetic/'
