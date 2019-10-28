@@ -4,14 +4,14 @@
 Code for the NeurIPS 2019 (Spotlight) paper [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155)
 
 In our paper, we show that:
-- The calibration error of methods like Platt scaling is typically underestimate, and cannot be easily measured.
+- The calibration error of methods like Platt scaling is typically underestimated, and cannot be easily measured.
 - We propose an efficient recalibration method where the calibration error can be measured.
 - We show that we can estimate the calibration error with fewer samples (than the standard method) using an estimator from the meteorological literature.
 
 
 ## Calibration Library
 
-This repository contains library code to measure the calibration error of models, including confidence intervals computed by Bootstrap, and to recalibrate models.
+This repository contains library code to measure the calibration error of models, including confidence intervals computed by Bootstrap, and code to recalibrate models.
 
 Start with examples/example.py which walks through how to recalibrate a model and estimate its calibration error, including confidence intervals.
 Ensure you're using Python 3 when running all our code:
