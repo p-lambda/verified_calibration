@@ -18,6 +18,16 @@ Ensure you're using Python 3 when running all our code:
 
 `export PYTHONPATH="."; python3 examples/example.py`
 
+## Citation
+
+If you find this useful please consider citing our paper:
+
+  @inproceedings{kumar2019calibration,
+    author = {A. Kumar and P. Liang and T. Ma},
+    booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+    title = {Verified Uncertainty Calibration},
+    year = {2019},
+  }
 
 ## Experiments
 
