@@ -52,6 +52,174 @@ def get_discrete_bins(data: List[float]) -> Bins:
     return bins
 
 
+# User facing functions to measure calibration error.
+
+def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
+    """Get confidence intervals for the calibration error.
+
+    Args:
+        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and logits[i] is the model's confidence
+            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
+            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
+            example. In the binary classification setting, labels[i] must be 0 or 1,
+            in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
+        p: We measure the lp calibration error, where p >= 1 is an integer.
+
+    Returns:
+        [lower, mid, upper]: 1-alpha confidence intervals produced by bootstrap resampling.
+        [lower, upper] represents the confidence interval. mid represents the median of
+        the bootstrap estimates. When p is not 2 (e.g. for the ECE where p = 1), this
+        can be used as a debiased estimate as well.
+    """
+    data = list(zip(logits, labels))
+    def ce_functional(data):
+        logits, labels = zip(*data)
+        return get_calibration_error(logits, labels, p, debias=False)
+    [lower, mid, upper] = bootstrap_uncertainty(data, ce_functional, num_samples=100, alpha=alpha)
+    return [lower, mid, upper]
+
+def get_calibration_error(logits, labels, p=2, debias=True):
+    """Get the calibration error.
+
+    Args:
+        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and logits[i] is the model's confidence
+            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
+            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
+            example. In the binary classification setting, labels[i] must be 0 or 1,
+            in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
+        p: We measure the lp calibration error, where p >= 1 is an integer.
+        debias: Should we try to debias the estimates? For p = 2, the debiasing
+            has provably better sample complexity.
+
+    Returns:
+        Estimated calibration error, a floating point value.
+        The method first uses heuristics to check if the values came from a scaling
+        method or binning method, and then calls the corresponding function. For
+        more explicit control, use lower_bound_scaling_ce or get_binning_ce.
+    """
+    if is_discrete(logits):
+        return get_binning_ce(logits, labels, p, debias)
+    else:
+        return lower_bound_scaling_ce(logits, labels, p, debias)
+
+
+def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15, binning_scheme=get_equal_bins):
+    """Lower bound the calibration error of a model with continuous outputs.
+
+    Args:
+        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and logits[i] is the model's confidence
+            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
+            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
+            example. In the binary classification setting, labels[i] must be 0 or 1,
+            in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
+        p: We measure the lp calibration error, where p >= 1 is an integer.
+        debias: Should we try to debias the estimates? For p = 2, the debiasing
+            has provably better sample complexity.
+        num_bins: Integer number of bins used to estimate the calibration error.
+        binning_scheme: A function that takes in a list of probabilities and number of bins,
+            and outputs a list of bins. See get_equal_bins, get_equal_prob_bins for examples.
+
+    Returns:
+        Estimated lower bound for calibration error, a floating point value.
+        For scaling methods we cannot estimate the calibration error, but only a
+        lower bound.
+    """
+    return _get_ce(logits, labels, p, debias, num_bins, binning_scheme)
+
+
+def get_binning_ce(logits, labels, p=2, debias=True):
+    """Estimate the calibration error of a binned model.
+
+    Args:
+        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and logits[i] is the model's confidence
+            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
+            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
+            example. In the binary classification setting, labels[i] must be 0 or 1,
+            in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
+        p: We measure the lp calibration error, where p >= 1 is an integer.
+        debias: Should we try to debias the estimates? For p = 2, the debiasing
+            has provably better sample complexity.
+
+    Returns:
+        Estimated calibration error, a floating point value.
+    """
+    return _get_ce(logits, labels, p, debias, None, binning_scheme=get_discrete_bins)
+
+
+def get_ece(logits, labels, debias=False, num_bins=15):
+    return lower_bound_scaling_ce(logits, labels, p=1, debias=debias, num_bins=num_bins,
+                          binning_scheme=get_equal_prob_bins)
+
+
+def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
+    def ce_1d(logits, labels):
+        assert logits.shape == labels.shape
+        assert len(logits.shape) == 1
+        data = list(zip(logits, labels))
+        if binning_scheme == get_discrete_bins:
+            assert(num_bins is None)
+            bins = binning_scheme(logits)
+        else:
+            bins = binning_scheme(logits, num_bins=num_bins)
+        if p == 2 and debias:
+            return unbiased_l2_ce(bin(data, bins))
+        else:
+            return plugin_ce(bin(data, bins), power=p)
+    logits = np.array(logits)
+    labels = np.array(labels)
+    if not(np.issubdtype(labels.dtype, np.integer)):
+        raise ValueError('labels should an integer numpy array.')
+    if len(labels.shape) != 1:
+        raise ValueError('labels should be a 1D numpy array.')
+    if len(logits.shape) == 1:
+        # If 1D (2-class setting), compute the regular calibration error.
+        if np.min(labels) != 0 or np.max(labels) != 1:
+            raise ValueError('If logits is 1D, each label should be 0 or 1.')
+        return ce_1d(logits, labels)
+    elif len(logits.shape) == 2:
+        # In the multiclass setting, compute the marginal calibration error.
+        if np.min(labels) != 0 or np.max(labels) != logits.shape[1] - 1:
+            raise ValueError('labels should be between 0 and num_classes - 1.')
+        labels_one_hot = get_labels_one_hot(labels, k=logits.shape[1])
+        assert logits.shape == labels_one_hot.shape
+        marginal_ces = []
+        for k in range(logits.shape[1]):
+            cur_logits = logits[:, k]
+            cur_labels = labels_one_hot[:, k]
+            marginal_ces.append(ce_1d(cur_logits, cur_labels))
+        return np.mean(marginal_ces)
+    else:
+        raise ValueError('logits should be a 1D or 2D numpy array.')
+
+
+def is_discrete(logits):
+    logits = np.array(logits)
+    if len(logits.shape) == 1:
+        return enough_duplicates(logits)
+    elif len(logits.shape) == 2:
+        for k in range(logits.shape[1]):
+            if not enough_duplicates(logits[:, k]):
+                return False
+        return True
+    else:
+        raise ValueError('logits must be a 1D or 2D numpy array.')
+
+
+def enough_duplicates(array):
+    num_bins = get_discrete_bins(array)
+    if len(num_bins) < array.shape[0] / 4.0:
+        return True
+    return False
+
+
 # Functions that bin data.
 
 def get_bin(pred_prob: float, bins: List[float]) -> int:
@@ -100,7 +268,7 @@ def get_bin_probs(binned_data: BinnedData) -> List[float]:
 def plugin_ce(binned_data: BinnedData, power=2) -> float:
     def bin_error(data: Data):
         if len(data) == 0:
-            return 1.0
+            raise ValueError('Too few values in bin, use fewer bins or get more data.')
         return abs(difference_mean(data)) ** power
     bin_probs = get_bin_probs(binned_data)
     bin_errors = list(map(bin_error, binned_data))
@@ -111,7 +279,7 @@ def unbiased_square_ce(binned_data: BinnedData) -> float:
     # Note, this is not the l2 CE. It does not take the square root.
     def bin_error(data: Data):
         if len(data) < 2:
-            return 1.0
+            raise ValueError('Too few values in bin, use fewer bins or get more data.')
         biased_estimate = abs(difference_mean(data)) ** 2
         label_values = list(map(lambda x: x[1], data))
         mean_label = np.mean(label_values)

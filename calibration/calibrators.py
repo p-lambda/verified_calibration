@@ -1,7 +1,7 @@
 
 import numpy as np
 
-import lib.utils as utils
+from . import utils
 
 
 class HistogramCalibrator:
