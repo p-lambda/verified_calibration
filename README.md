@@ -4,7 +4,7 @@ This repository contains library code to measure the calibration error of models
 
 Motivating example for uncertainty calibration: Calster and Vickers 2015 train a random forest that takes in features such as tumor size and presence of teratoma, and tries to predict the probability a patient has testicular cancer. They note that for a large number of patients, the model predicts around a 20% chance of cancer. In reality, around 40% of these patients had cancer. This underestimation can lead to doctors prescribing the wrong treatment---in a situation where many lives are at stake.
 
-*The high level point here is that the uncertainties that models output matter, not just the accuracy*. Calibration is a popular way to measure the quality of a model's uncertainties, and recalibration is a way to take an existing model and correct its probabilities to make them better. See [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) for background on this.
+*The high level point here is that the uncertainties that models output matter, not just the model's accuracy*. Calibration is a popular way to measure the quality of a model's uncertainties, and recalibration is a way to take an existing model and correct its uncertainties to make them better. See [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) for background on this.
 
 ## Installation
 
