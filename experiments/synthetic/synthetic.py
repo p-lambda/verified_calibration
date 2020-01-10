@@ -1,8 +1,7 @@
 
 import argparse
 import numpy as np
-import lib.utils as utils
-import lib.calibrators as calibrators
+import calibration as cal
 import matplotlib.pyplot as plt
 import pickle
 import os
@@ -62,10 +61,10 @@ def evaluate_l2ce(f, calibrator, z_dist, n):
     zs = z_dist(size=n)
     ps = f(zs)
     phats = calibrator.calibrate(zs)
-    bins = utils.get_discrete_bins(phats)
+    bins = cal.get_discrete_bins(phats)
     data = list(zip(phats, ps))
-    binned_data = utils.bin(data, bins)
-    return utils.plugin_ce(binned_data) ** 2
+    binned_data = cal.bin(data, bins)
+    return cal.plugin_ce(binned_data) ** 2
 
 
 def evaluate_mse(f, calibrator, z_dist, n):
@@ -97,11 +96,11 @@ def get_errors(f, Calibrators, z_dist, nb_args, num_trials, num_evaluation,
 
 
 def sweep_n_platt(a, b, save_file, base_n=500, max_n_multiplier=9, bins=10,
-                  num_trials=1000, num_evaluation=10000):
+                  num_trials=1000, num_evaluation=1000):
     f = platt_function(a, b)
-    Calibrators = [calibrators.PlattCalibrator,
-                   calibrators.HistogramCalibrator,
-                   calibrators.PlattBinnerCalibrator]
+    Calibrators = [cal.PlattCalibrator,
+                   cal.HistogramCalibrator,
+                   cal.PlattBinnerCalibrator]
     names = ['scaling', 'binning', 'scaling-binning']
     dist = np.random.uniform
     nb_args = [(base_n * i, bins) for i in range(1, max_n_multiplier)]
@@ -110,11 +109,11 @@ def sweep_n_platt(a, b, save_file, base_n=500, max_n_multiplier=9, bins=10,
 
 
 def sweep_b_platt(a, b, save_file, n=2000, base_bins=10, max_bin_multiplier=9,
-                  num_trials=1000, num_evaluation=10000):
+                  num_trials=1000, num_evaluation=1000):
     f = platt_function(a, b)
-    Calibrators = [calibrators.PlattCalibrator,
-                   calibrators.HistogramCalibrator,
-                   calibrators.PlattBinnerCalibrator]
+    Calibrators = [cal.PlattCalibrator,
+                   cal.HistogramCalibrator,
+                   cal.PlattBinnerCalibrator]
     names = ['scaling', 'binning', 'scaling-binning']
     dist = np.random.uniform
     nb_args = [(n, base_bins * i) for i in range(1, max_bin_multiplier)]
@@ -123,12 +122,12 @@ def sweep_b_platt(a, b, save_file, n=2000, base_bins=10, max_bin_multiplier=9,
 
 
 def sweep_n_noisy_platt(a, b, save_file, base_n=500, max_n_multiplier=9, bins=10,
-                        num_trials=1000, num_evaluation=10000):
+                        num_trials=1000, num_evaluation=100):
     l, u = 0.25, 0.75  # Probably needs to change.
     f = noisy_platt_function(a, b, 0.02, 0.25, 0.75)  # Probably needs to change.
-    Calibrators = [calibrators.PlattCalibrator,
-                   calibrators.HistogramCalibrator,
-                   calibrators.PlattBinnerCalibrator]
+    Calibrators = [cal.PlattCalibrator,
+                   cal.HistogramCalibrator,
+                   cal.PlattBinnerCalibrator]
     names = ['scaling', 'binning', 'scaling-binning']
     def dist(size):
         return np.random.uniform(low=l, high=u, size=size)

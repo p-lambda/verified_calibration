@@ -171,6 +171,8 @@ def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
             bins = binning_scheme(logits, num_bins=num_bins)
         if p == 2 and debias:
             return unbiased_l2_ce(bin(data, bins))
+        elif debias:
+            return normal_debiased_ce(bin(data, bins), power=p)
         else:
             return plugin_ce(bin(data, bins), power=p)
     logits = np.array(logits)
@@ -194,8 +196,8 @@ def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
         for k in range(logits.shape[1]):
             cur_logits = logits[:, k]
             cur_labels = labels_one_hot[:, k]
-            marginal_ces.append(ce_1d(cur_logits, cur_labels))
-        return np.mean(marginal_ces)
+            marginal_ces.append(ce_1d(cur_logits, cur_labels) ** p)
+        return np.mean(marginal_ces) ** (1.0 / p)
     else:
         raise ValueError('logits should be a 1D or 2D numpy array.')
 
@@ -268,7 +270,7 @@ def get_bin_probs(binned_data: BinnedData) -> List[float]:
 def plugin_ce(binned_data: BinnedData, power=2) -> float:
     def bin_error(data: Data):
         if len(data) == 0:
-            raise ValueError('Too few values in bin, use fewer bins or get more data.')
+            return 0.0
         return abs(difference_mean(data)) ** power
     bin_probs = get_bin_probs(binned_data)
     bin_errors = list(map(bin_error, binned_data))
@@ -279,7 +281,8 @@ def unbiased_square_ce(binned_data: BinnedData) -> float:
     # Note, this is not the l2 CE. It does not take the square root.
     def bin_error(data: Data):
         if len(data) < 2:
-            raise ValueError('Too few values in bin, use fewer bins or get more data.')
+            return 0.0
+            # raise ValueError('Too few values in bin, use fewer bins or get more data.')
         biased_estimate = abs(difference_mean(data)) ** 2
         label_values = list(map(lambda x: x[1], data))
         mean_label = np.mean(label_values)
@@ -292,6 +295,30 @@ def unbiased_square_ce(binned_data: BinnedData) -> float:
 
 def unbiased_l2_ce(binned_data: BinnedData) -> float:
     return max(unbiased_square_ce(binned_data), 0.0) ** 0.5
+
+
+def bootstrapped_debiased_ece(binned_data : BinnedData, resamples=1000) -> float:
+    pass
+
+
+def normal_debiased_ce(binned_data : BinnedData, power=1, resamples=1000) -> float:
+    label_means = np.array(list(map(lambda l: np.mean([b for a, b in l]), binned_data)))
+    bin_sizes = np.array(list(map(len, binned_data)))
+    label_stddev = np.sqrt(label_means * (1 - label_means) / bin_sizes)
+    model_vals = np.array(list(map(lambda l: np.mean([a for a, b in l]), binned_data)))
+    assert(label_means.shape == (len(binned_data),))
+    assert(model_vals.shape == (len(binned_data),))
+    ce = plugin_ce(binned_data, power=power)
+    bin_probs = get_bin_probs(binned_data)
+    resampled_ces = []
+    for i in range(resamples):
+        label_samples = np.random.normal(loc=label_means, scale=label_stddev)
+        diffs = np.power(np.abs(label_samples - model_vals), power)
+        cur_ce = np.power(np.dot(bin_probs, diffs), 1.0 / power)
+        resampled_ces.append(cur_ce)
+    mean_resampled = np.mean(resampled_ces)
+    bias_corrected_ece = 2 * ce - mean_resampled
+    return bias_corrected_ece
 
 
 # MSE Estimators.
@@ -328,6 +355,22 @@ def bootstrap_uncertainty(data: List[T], functional, estimator=None, alpha=10.0,
     return (plugin + estimate - np.percentile(bootstrap_estimates, 100 - alpha / 2.0),
             plugin + estimate - np.percentile(bootstrap_estimates, 50),
             plugin + estimate - np.percentile(bootstrap_estimates, alpha / 2.0))
+
+
+def precentile_bootstrap_uncertainty(data: List[T], functional, estimator=None, alpha=10.0,
+                                     num_samples=1000) -> Tuple[float, float]:
+    """Return boostrap uncertained for 1 - alpha percent confidence interval."""
+    if estimator is None:
+        estimator = functional
+    plugin = functional(data)
+    estimate = estimator(data)
+    bootstrap_estimates = []
+    for _ in range(num_samples):
+        bootstrap_estimates.append(estimator(resample(data)))
+    bias = 2 * np.percentile(bootstrap_estimates, 50) - plugin - estimate
+    return (np.percentile(bootstrap_estimates, alpha / 2.0) - bias,
+            np.percentile(bootstrap_estimates, 50) - bias,
+            np.percentile(bootstrap_estimates, 100 - alpha / 2.0) - bias)
 
 
 def bootstrap_std(data: List[T], estimator=None, num_samples=100) -> Tuple[float, float]:

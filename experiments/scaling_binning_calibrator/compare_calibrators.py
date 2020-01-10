@@ -5,32 +5,31 @@ from matplotlib import rc
 import time
 import os
 
-import lib.calibrators as calibrators
-import lib.utils as utils
+import calibration as cal
 
 
 def eval_top_calibration(probs, logits, labels):
-    correct = (utils.get_top_predictions(logits) == labels)
+    correct = (cal.get_top_predictions(logits) == labels)
     data = list(zip(probs, correct))
-    bins = utils.get_discrete_bins(probs)
-    binned_data = utils.bin(data, bins)
-    return utils.plugin_ce(binned_data) ** 2
+    bins = cal.get_discrete_bins(probs)
+    binned_data = cal.bin(data, bins)
+    return cal.plugin_ce(binned_data) ** 2
 
 
 def eval_marginal_calibration(probs, logits, labels, plugin=True):
     ces = []  # Compute the calibration error per class, then take the average.
     k = logits.shape[1]
-    labels_one_hot = utils.get_labels_one_hot(np.array(labels), k)
+    labels_one_hot = cal.get_labels_one_hot(np.array(labels), k)
     for c in range(k):
         probs_c = probs[:, c]
         labels_c = labels_one_hot[:, c]
         data_c = list(zip(probs_c, labels_c))
-        bins_c = utils.get_discrete_bins(probs_c)
-        binned_data_c = utils.bin(data_c, bins_c)
+        bins_c = cal.get_discrete_bins(probs_c)
+        binned_data_c = cal.bin(data_c, bins_c)
         if plugin:
-            ce_c = utils.plugin_ce(binned_data_c) ** 2
+            ce_c = cal.plugin_ce(binned_data_c) ** 2
         else:
-            ce_c = utils.unbiased_square_ce(binned_data_c)
+            ce_c = cal.unbiased_square_ce(binned_data_c)
         ces.append(ce_c)
     return np.mean(ces)
 
@@ -42,7 +41,7 @@ def upper_bound_marginal_calibration_unbiased(probs, logits, labels, samples=30)
         probs, logits, labels = np.array(probs), np.array(logits), np.array(labels)
         return eval_marginal_calibration(probs, logits, labels, plugin=False)
     estimate = evaluator(data)
-    conf_interval = utils.bootstrap_std(data, evaluator, num_samples=samples)
+    conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
 
 
@@ -53,7 +52,7 @@ def upper_bound_marginal_calibration_biased(probs, logits, labels, samples=30):
         probs, logits, labels = np.array(probs), np.array(logits), np.array(labels)
         return eval_marginal_calibration(probs, logits, labels, plugin=True)
     estimate = evaluator(data)
-    conf_interval = utils.bootstrap_std(data, evaluator, num_samples=samples)
+    conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
 
 
@@ -218,15 +217,15 @@ def make_calibration_eval_data_sampler(logits, labels, num_calib, num_eval):
 
 
 def cifar10_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = utils.load_test_logits_labels(logits_path)
+    logits, labels = cal.load_test_logits_labels(logits_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
         data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
         num_bins_list=bins_list,
-        Calibrators=[calibrators.HistogramTopCalibrator, calibrators.PlattBinnerTopCalibrator],
+        Calibrators=[cal.HistogramTopCalibrator, cal.PlattBinnerTopCalibrator],
         calibration_evaluators=[eval_top_calibration, eval_top_calibration],
-        eval_mse=utils.eval_top_mse,
+        eval_mse=cal.eval_top_mse,
         num_trials=num_trials)
     plot_mse_ce_curve(bins_list, l2_ces, mses, xlim=(0.0, 0.002), ylim=(0.0425, 0.045),
                       save_path=mse_ce_save_path)
@@ -234,16 +233,16 @@ def cifar10_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_tria
 
 
 def cifar10_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = utils.load_test_logits_labels(logits_path)
+    logits, labels = cal.load_test_logits_labels(logits_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
         data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
         num_bins_list=bins_list,
-        Calibrators=[calibrators.HistogramMarginalCalibrator,
-                     calibrators.PlattBinnerMarginalCalibrator],
+        Calibrators=[cal.HistogramMarginalCalibrator,
+                     cal.PlattBinnerMarginalCalibrator],
         calibration_evaluators=[eval_marginal_calibration, eval_marginal_calibration],
-        eval_mse=utils.eval_marginal_mse,
+        eval_mse=cal.eval_marginal_mse,
         num_trials=num_trials)
     plot_mse_ce_curve(bins_list, l2_ces, mses, xlim=(0.0, 0.0006), ylim=(0.04, 0.08),
                       save_path=mse_ce_save_path)
@@ -251,31 +250,31 @@ def cifar10_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num
 
 
 def imagenet_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = utils.load_test_logits_labels(logits_path)
+    logits, labels = cal.load_test_logits_labels(logits_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
         data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
         num_bins_list=bins_list,
-        Calibrators=[calibrators.HistogramTopCalibrator, calibrators.PlattBinnerTopCalibrator],
+        Calibrators=[cal.HistogramTopCalibrator, cal.PlattBinnerTopCalibrator],
         calibration_evaluators=[eval_top_calibration, eval_top_calibration],
-        eval_mse=utils.eval_top_mse,
+        eval_mse=cal.eval_top_mse,
         num_trials=num_trials)
     plot_mse_ce_curve(bins_list, l2_ces, mses, save_path=mse_ce_save_path)
     plot_ces(bins_list, l2_ces, l2_stddevs, save_path=ce_save_path)
 
 
 def imagenet_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num_trials=20):
-    logits, labels = utils.load_test_logits_labels(logits_path)
+    logits, labels = cal.load_test_logits_labels(logits_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 25000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
         data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
         num_bins_list=bins_list,
-        Calibrators=[calibrators.HistogramMarginalCalibrator,
-                     calibrators.PlattBinnerMarginalCalibrator],
+        Calibrators=[cal.HistogramMarginalCalibrator,
+                     cal.PlattBinnerMarginalCalibrator],
         calibration_evaluators=[eval_marginal_calibration, eval_marginal_calibration],
-        eval_mse=utils.eval_marginal_mse,
+        eval_mse=cal.eval_marginal_mse,
         num_trials=num_trials)
     plot_mse_ce_curve(bins_list, l2_ces, mses, save_path=mse_ce_save_path)
     plot_ces(bins_list, l2_ces, l2_stddevs, save_path=ce_save_path)

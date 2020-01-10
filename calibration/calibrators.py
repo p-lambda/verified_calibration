@@ -88,6 +88,36 @@ class PlattBinnerTopCalibrator:
         return self._discrete_calibrator(probs)
 
 
+class PlattTopCalibrator:
+
+    def __init__(self, num_calibration, num_bins):
+        self._num_calibration = num_calibration
+        self._num_bins = num_bins
+
+    def train_calibration(self, logits, labels):
+        assert(len(logits) >= self._num_calibration)
+        predictions = utils.get_top_predictions(logits)
+        probs = utils.get_top_probs(logits)
+        correct = (predictions == labels)
+        self._platt = utils.get_platt_scaler(
+            probs, correct)
+
+    def calibrate(self, logits):
+        return self._platt(utils.get_top_probs(logits))
+
+
+class IdentityTopCalibrator:
+
+    def __init__(self, num_calibration, num_bins):
+        pass
+
+    def train_calibration(self, logits, labels):
+        pass
+
+    def calibrate(self, logits):
+        return utils.get_top_probs(logits)
+
+
 class HistogramMarginalCalibrator:
 
     def __init__(self, num_calibration, num_bins):
