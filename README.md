@@ -55,7 +55,7 @@ You can find complete code examples in the examples folder. Refer to:
 If you find this library useful please consider citing our paper:
 
     @inproceedings{kumar2019calibration,
-      author = {A. Kumar and P. Liang and T. Ma},
+      author = {Ananya Kumar and Percy Liang and Tengyu Ma},
       booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
       title = {Verified Uncertainty Calibration},
       year = {2019},
