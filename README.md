@@ -89,4 +89,4 @@ We have 4 sets of experiments:
 - Experiments showing the debiased estimator can estimate calibration error with fewer samples than standard estimator (Section 5)
 Running each experiment saves plots in the corresponding folder in saved_files
 
-This section is still work in progress. More detailed instructions, and a link to a CodaLab worksheet, are coming soon.
+See our CodaLab worksheet https://worksheets.codalab.org/worksheets/0xb6d027ee127e422989ab9115726c5411 which contains all the experiment runs and the exact code used to produce them.
