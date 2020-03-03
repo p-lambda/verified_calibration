@@ -80,6 +80,7 @@ def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
     [lower, mid, upper] = bootstrap_uncertainty(data, ce_functional, num_samples=100, alpha=alpha)
     return [lower, mid, upper]
 
+
 def get_calibration_error(logits, labels, p=2, debias=True):
     """Get the calibration error.
 
@@ -216,6 +217,7 @@ def is_discrete(logits):
 
 
 def enough_duplicates(array):
+    # TODO: instead check that we have at least 2 values in each bin.
     num_bins = get_discrete_bins(array)
     if len(num_bins) < array.shape[0] / 4.0:
         return True
@@ -227,6 +229,7 @@ def enough_duplicates(array):
 def get_bin(pred_prob: float, bins: List[float]) -> int:
     """Get the index of the bin that pred_prob belongs in."""
     assert 0.0 <= pred_prob <= 1.0
+    assert bins[-1] == 1.0
     return bisect.bisect_left(bins, pred_prob)
 
 
@@ -297,13 +300,11 @@ def unbiased_l2_ce(binned_data: BinnedData) -> float:
     return max(unbiased_square_ce(binned_data), 0.0) ** 0.5
 
 
-def bootstrapped_debiased_ece(binned_data : BinnedData, resamples=1000) -> float:
-    pass
-
-
 def normal_debiased_ce(binned_data : BinnedData, power=1, resamples=1000) -> float:
-    label_means = np.array(list(map(lambda l: np.mean([b for a, b in l]), binned_data)))
     bin_sizes = np.array(list(map(len, binned_data)))
+    if np.min(bin_sizes) <= 1:
+        raise ValueError('Every bin must have at least 2 points for debiased estimator.')
+    label_means = np.array(list(map(lambda l: np.mean([b for a, b in l]), binned_data)))
     label_stddev = np.sqrt(label_means * (1 - label_means) / bin_sizes)
     model_vals = np.array(list(map(lambda l: np.mean([a for a, b in l]), binned_data)))
     assert(label_means.shape == (len(binned_data),))
@@ -313,12 +314,14 @@ def normal_debiased_ce(binned_data : BinnedData, power=1, resamples=1000) -> flo
     resampled_ces = []
     for i in range(resamples):
         label_samples = np.random.normal(loc=label_means, scale=label_stddev)
+        # TODO: we can also correct the bias for the model_vals, although this is
+        # smaller.
         diffs = np.power(np.abs(label_samples - model_vals), power)
         cur_ce = np.power(np.dot(bin_probs, diffs), 1.0 / power)
         resampled_ces.append(cur_ce)
     mean_resampled = np.mean(resampled_ces)
-    bias_corrected_ece = 2 * ce - mean_resampled
-    return bias_corrected_ece
+    bias_corrected_ce = 2 * ce - mean_resampled
+    return bias_corrected_ce
 
 
 # MSE Estimators.
