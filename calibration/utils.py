@@ -157,7 +157,7 @@ def get_binning_ce(logits, labels, p=2, debias=True):
 
 def get_ece(logits, labels, debias=False, num_bins=15):
     return lower_bound_scaling_ce(logits, labels, p=1, debias=debias, num_bins=num_bins,
-                          binning_scheme=get_equal_prob_bins)
+                                  binning_scheme=get_equal_prob_bins)
 
 
 def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
