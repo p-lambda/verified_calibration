@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/AnanyaKumar/verified_calibration",
     packages=setuptools.find_packages(),
-    install_requires=['numpy', 'sklearn'],
+    install_requires=['numpy', 'sklearn', 'parameterized'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

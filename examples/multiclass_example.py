@@ -8,7 +8,7 @@ import scipy
 def main():
     # Make synthetic dataset.
     np.random.seed(0)  # Keep results consistent.
-    num_points = 1000
+    num_points = 10000
     d = 10
     (zs, ys) = synthetic_data(num_points=num_points, d=d)
 
@@ -30,7 +30,6 @@ def main():
     # Get confidence intervals for the calibration error.
     [lower, _, upper] = calibration.get_calibration_error_uncertainties(calibrated_zs, test_ys)
     print("  Confidence interval is [%.2f%%, %.2f%%]" % (100 * lower, 100 * upper))
-
 
 
 def synthetic_data(num_points, d):

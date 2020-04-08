@@ -129,6 +129,8 @@ class TestUtilMethods(unittest.TestCase):
         pred_ce = _get_ce(logits, labels, p, debias=False, num_bins=None,
             binning_scheme=get_discrete_bins)
         self.assertAlmostEqual(pred_ce, true_ce)
+        wrapper_ce = get_calibration_error(logits, labels, p=p, debias=False)
+        self.assertAlmostEqual(pred_ce, wrapper_ce)
         pred_ce = _get_ce(logits, labels, p, debias=True, num_bins=None,
             binning_scheme=get_discrete_bins)
         self.assertLess(pred_ce, true_ce)
