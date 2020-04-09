@@ -54,7 +54,11 @@ def get_discrete_bins(data: List[float]) -> Bins:
 
 # User facing functions to measure calibration error.
 
-def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
+def get_top_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
+    return get_calibration_error_uncertainties(logits, labels, p, alpha, mode='top-label')
+
+
+def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1, mode='marginal'):
     """Get confidence intervals for the calibration error.
 
     Args:
@@ -66,6 +70,10 @@ def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
             example. In the binary classification setting, labels[i] must be 0 or 1,
             in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
         p: We measure the lp calibration error, where p >= 1 is an integer.
+        mode: 'marginal' or 'top-label'. 'marginal' calibration means we compute the
+            calibraton error for each class and then average them. Top-label means
+            we compute the calibration error of the prediction that the model is most
+            confident about.
 
     Returns:
         [lower, mid, upper]: 1-alpha confidence intervals produced by bootstrap resampling.
@@ -76,12 +84,16 @@ def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
     data = list(zip(logits, labels))
     def ce_functional(data):
         logits, labels = zip(*data)
-        return get_calibration_error(logits, labels, p, debias=False)
+        return get_calibration_error(logits, labels, p, debias=False, mode=mode)
     [lower, mid, upper] = bootstrap_uncertainty(data, ce_functional, num_samples=100, alpha=alpha)
     return [lower, mid, upper]
 
 
-def get_calibration_error(logits, labels, p=2, debias=True):
+def get_top_calibration_error(logits, labels, p=2, debias=True):
+    return get_calibration_error(logits, labels, p, debias, mode='top-label')
+
+
+def get_calibration_error(logits, labels, p=2, debias=True, mode='marginal'):
     """Get the calibration error.
 
     Args:
@@ -95,6 +107,10 @@ def get_calibration_error(logits, labels, p=2, debias=True):
         p: We measure the lp calibration error, where p >= 1 is an integer.
         debias: Should we try to debias the estimates? For p = 2, the debiasing
             has provably better sample complexity.
+        mode: 'marginal' or 'top-label'. 'marginal' calibration means we compute the
+            calibraton error for each class and then average them. Top-label means
+            we compute the calibration error of the prediction that the model is most
+            confident about.
 
     Returns:
         Estimated calibration error, a floating point value.
@@ -103,12 +119,19 @@ def get_calibration_error(logits, labels, p=2, debias=True):
         more explicit control, use lower_bound_scaling_ce or get_binning_ce.
     """
     if is_discrete(logits):
-        return get_binning_ce(logits, labels, p, debias)
+        return get_binning_ce(logits, labels, p, debias, mode=mode)
     else:
-        return lower_bound_scaling_ce(logits, labels, p, debias)
+        return lower_bound_scaling_ce(logits, labels, p, debias, mode=mode)
 
 
-def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15, binning_scheme=get_equal_bins):
+def lower_bound_scaling_top_ce(logits, labels, p=2, debias=True, num_bins=15,
+                               binning_scheme=get_equal_bins):
+    return lower_bound_scaling_ce(logits, labels, p, debias, num_bins, binning_scheme,
+                                  mode='top-label')
+
+
+def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15,
+                           binning_scheme=get_equal_bins, mode='marginal'):
     """Lower bound the calibration error of a model with continuous outputs.
 
     Args:
@@ -125,16 +148,24 @@ def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15, binnin
         num_bins: Integer number of bins used to estimate the calibration error.
         binning_scheme: A function that takes in a list of probabilities and number of bins,
             and outputs a list of bins. See get_equal_bins, get_equal_prob_bins for examples.
+        mode: 'marginal' or 'top-label'. 'marginal' calibration means we compute the
+            calibraton error for each class and then average them. Top-label means
+            we compute the calibration error of the prediction that the model is most
+            confident about.
 
     Returns:
         Estimated lower bound for calibration error, a floating point value.
         For scaling methods we cannot estimate the calibration error, but only a
         lower bound.
     """
-    return _get_ce(logits, labels, p, debias, num_bins, binning_scheme)
+    return _get_ce(logits, labels, p, debias, num_bins, binning_scheme, mode=mode)
 
 
-def get_binning_ce(logits, labels, p=2, debias=True):
+def get_binning_top_ce(logits, labels, p=2, debias=True, mode='marginal'):
+    return get_binning_ce(logits, labels, p, debias, mode='top-label')
+
+
+def get_binning_ce(logits, labels, p=2, debias=True, mode='marginal'):
     """Estimate the calibration error of a binned model.
 
     Args:
@@ -148,19 +179,23 @@ def get_binning_ce(logits, labels, p=2, debias=True):
         p: We measure the lp calibration error, where p >= 1 is an integer.
         debias: Should we try to debias the estimates? For p = 2, the debiasing
             has provably better sample complexity.
+        mode: 'marginal' or 'top-label'. 'marginal' calibration means we compute the
+            calibraton error for each class and then average them. Top-label means
+            we compute the calibration error of the prediction that the model is most
+            confident about.
 
     Returns:
         Estimated calibration error, a floating point value.
     """
-    return _get_ce(logits, labels, p, debias, None, binning_scheme=get_discrete_bins)
+    return _get_ce(logits, labels, p, debias, None, binning_scheme=get_discrete_bins, mode=mode)
 
 
-def get_ece(logits, labels, debias=False, num_bins=15):
+def get_ece(logits, labels, debias=False, num_bins=15, mode='top-label'):
     return lower_bound_scaling_ce(logits, labels, p=1, debias=debias, num_bins=num_bins,
-                                  binning_scheme=get_equal_prob_bins)
+                                  binning_scheme=get_equal_prob_bins, mode=mode)
 
 
-def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
+def _get_ce(logits, labels, p, debias, num_bins, binning_scheme, mode='marginal'):
     def ce_1d(logits, labels):
         assert logits.shape == labels.shape
         assert len(logits.shape) == 1
@@ -176,29 +211,38 @@ def _get_ce(logits, labels, p, debias, num_bins, binning_scheme):
             return normal_debiased_ce(bin(data, bins), power=p)
         else:
             return plugin_ce(bin(data, bins), power=p)
+    if mode != 'marginal' and mode != 'top-label':
+        raise ValueError("mode must be 'marginal' or 'top-label'.")
     logits = np.array(logits)
     labels = np.array(labels)
     if not(np.issubdtype(labels.dtype, np.integer)):
         raise ValueError('labels should an integer numpy array.')
     if len(labels.shape) != 1:
         raise ValueError('labels should be a 1D numpy array.')
+    if logits.shape[0] != labels.shape[0]:
+        raise ValueError('labels and logits should have the same number of entries.')
     if len(logits.shape) == 1:
         # If 1D (2-class setting), compute the regular calibration error.
         if np.min(labels) != 0 or np.max(labels) != 1:
             raise ValueError('If logits is 1D, each label should be 0 or 1.')
         return ce_1d(logits, labels)
     elif len(logits.shape) == 2:
-        # In the multiclass setting, compute the marginal calibration error.
         if np.min(labels) != 0 or np.max(labels) != logits.shape[1] - 1:
             raise ValueError('labels should be between 0 and num_classes - 1.')
-        labels_one_hot = get_labels_one_hot(labels, k=logits.shape[1])
-        assert logits.shape == labels_one_hot.shape
-        marginal_ces = []
-        for k in range(logits.shape[1]):
-            cur_logits = logits[:, k]
-            cur_labels = labels_one_hot[:, k]
-            marginal_ces.append(ce_1d(cur_logits, cur_labels) ** p)
-        return np.mean(marginal_ces) ** (1.0 / p)
+        if mode == 'marginal':
+            labels_one_hot = get_labels_one_hot(labels, k=logits.shape[1])
+            assert logits.shape == labels_one_hot.shape
+            marginal_ces = []
+            for k in range(logits.shape[1]):
+                cur_logits = logits[:, k]
+                cur_labels = labels_one_hot[:, k]
+                marginal_ces.append(ce_1d(cur_logits, cur_labels) ** p)
+            return np.mean(marginal_ces) ** (1.0 / p)
+        elif mode == 'top-label':
+            preds = get_top_predictions(logits)
+            correct = (preds == labels).astype(logits.dtype)
+            confidences = get_top_probs(logits)
+            return ce_1d(confidences, correct)
     else:
         raise ValueError('logits should be a 1D or 2D numpy array.')
 

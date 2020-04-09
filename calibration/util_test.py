@@ -123,7 +123,7 @@ class TestUtilMethods(unittest.TestCase):
         [2, (4/9*(0.25**2)+5/9*(0.2**2))**(1/2.0)],
         [3, (4/9*(0.25**3)+5/9*(0.2**3))**(1/3.0)],
     ])
-    def test_get_ce(self, p, true_ce):
+    def test_get_binary_ce(self, p, true_ce):
         logits = [0.5, 0.5, 0.5, 0.6, 0.5, 0.6, 0.6, 0.6, 0.6]
         labels = [0, 1, 0, 1, 0, 1, 1, 1, 0]
         pred_ce = _get_ce(logits, labels, p, debias=False, num_bins=None,
@@ -135,7 +135,102 @@ class TestUtilMethods(unittest.TestCase):
             binning_scheme=get_discrete_bins)
         self.assertLess(pred_ce, true_ce)
 
+    @parameterized.expand([
+        [1, 4/9*0.25+5/9*0.2],
+        [2, (4/9*(0.25**2)+5/9*(0.2**2))**(1/2.0)],
+        [3, (4/9*(0.25**3)+5/9*(0.2**3))**(1/3.0)],
+    ])
+    def test_get_two_label_ce(self, p, true_ce):
+        # Same as the previous test, except logits is now multi-dimensional.
+        pt6 = [0.4, 0.6]
+        pt5 = [0.5, 0.5]
+        logits = [pt5, pt5, pt5, pt6, pt5, pt6, pt6, pt6, pt6]
+        labels = [0, 1, 0, 1, 0, 1, 1, 1, 0]
+        pred_ce = _get_ce(logits, labels, p, debias=False, num_bins=None,
+            binning_scheme=get_discrete_bins)
+        self.assertAlmostEqual(pred_ce, true_ce)
+        # Check that the wrapper calls _get_ce with the right options.
+        wrapper_ce = get_calibration_error(logits, labels, p=p, debias=False)
+        self.assertAlmostEqual(pred_ce, wrapper_ce)
+        # For the 2 label case, marginal calibration and top-label calibration should be the same.
+        top_label_ce = get_calibration_error(logits, labels, p=p, debias=False, mode='top-label')
+        self.assertAlmostEqual(top_label_ce, pred_ce)
+        debiased_top_label_ce = get_calibration_error(logits, labels, p=p, debias=True, mode='top-label')
+        self.assertLess(debiased_top_label_ce, pred_ce)
+        debiased_pred_ce = _get_ce(logits, labels, p, debias=True, num_bins=None,
+            binning_scheme=get_discrete_bins)
+        self.assertLess(debiased_pred_ce, true_ce)
 
+    @parameterized.expand([
+        [1, 4/42.0*0.1 + 6/42.0*(5/6.0-0.6) + 8/42.0*0.1 + 4/42.0*0.05 + 6/42.0*(0.3-1/6.0),
+         6/14.0*(5/6.0-0.6) + 4/14.0*0.05 + 4/14.0*0.1],
+        [2, (4/42.0*0.1**2 + 6/42.0*(5/6.0-0.6)**2 + 8/42.0*0.1**2 +
+             4/42.0*0.05**2 + 6/42.0*(0.3-1/6.0)**2)**(1/2.0),
+         (6/14.0*(5/6.0-0.6)**2 + 4/14.0*0.05**2 + 4/14.0*0.1**2)**(1/2.0)],
+        [3, (4/42.0*0.1**3 + 6/42.0*(5/6.0-0.6)**3 + 8/42.0*0.1**3 +
+             4/42.0*0.05**3 + 6/42.0*(0.3-1/6.0)**3)**(1/3.0),
+         (6/14.0*(5/6.0-0.6)**3 + 4/14.0*0.05**3 + 4/14.0*0.1**3)**(1/3.0)]
+    ])
+    def test_get_three_label_ce(self, p, true_marginal_ce, true_top_ce):
+        # Same as the previous test, except logits is now multi-dimensional.
+        l0 = [0.6, 0.3, 0.1]
+        l1 = [0.1, 0.8, 0.1]
+        l2 = [0.1, 0.0, 0.9]
+        logits = np.array([l0, l0, l0, l0, l0, l0, l1, l1, l1, l1, l2, l2, l2, l2])
+        labels = np.array([ 0,  0,  0,  0,  0,  1,  1,  1,  1,  2,  2,  2,  2,  2])
+        perm = np.random.permutation(len(labels))
+        logits, labels = logits[perm], labels[perm]
+        pred_ce = _get_ce(logits, labels, p, debias=False, num_bins=None,
+            binning_scheme=get_discrete_bins)
+        self.assertAlmostEqual(pred_ce, true_marginal_ce)
+        # Check that the wrapper calls _get_ce with the right options.
+        wrapper_ce = get_calibration_error(logits, labels, p=p, debias=False)
+        self.assertAlmostEqual(pred_ce, wrapper_ce)
+        top_label_ce = get_calibration_error(logits, labels, p=p, debias=False, mode='top-label')
+        self.assertAlmostEqual(top_label_ce, true_top_ce)
+        debiased_top_label_ce = get_calibration_error(logits, labels, p=p, debias=True, mode='top-label')
+        self.assertLess(debiased_top_label_ce, true_top_ce)
+        debiased_pred_ce = _get_ce(logits, labels, p, debias=True, num_bins=None,
+            binning_scheme=get_discrete_bins)
+        self.assertLess(debiased_pred_ce, true_marginal_ce)
+
+
+    @parameterized.expand([
+        [1, 0.5*(2/3.0-0.6) + 0.5*(1-2.75/3)],
+        [2, (0.5*(2/3.0-0.6)**2 + 0.5*(1-2.75/3)**2)**(1/2.0)],
+        [3, (0.5*(2/3.0-0.6)**3 + 0.5*(1-2.75/3)**3)**(1/3.0)],
+    ])
+    def test_three_label_top_ce_lower_bound(self, p, true_top_ce):
+        # Same as the previous test, except logits is now multi-dimensional.
+        logits = np.array([[0.8, 0.1, 0.1],
+                           [0.6, 0.2, 0.2],
+                           [0.0, 0.9, 0.1],
+                           [0.0, 1.0, 0.0],
+                           [0.3, 0.3, 0.4],
+                           [0.2, 0.0, 0.85]])
+        labels = np.array([0, 0, 1, 1, 0, 2])
+        perm = np.random.permutation(len(labels))
+        logits, labels = logits[perm], labels[perm]
+        top_label_ce = lower_bound_scaling_ce(logits, labels, p=p, debias=False, num_bins=2,
+                                              binning_scheme=get_equal_bins, mode='top-label')
+        self.assertAlmostEqual(top_label_ce, true_top_ce)
+        debiased_top_label_ce = lower_bound_scaling_ce(logits, labels, p=p, debias=True, num_bins=2,
+                                              binning_scheme=get_equal_bins, mode='top-label')
+        self.assertLess(debiased_top_label_ce, true_top_ce)
+
+    def test_ece(self):
+        logits = np.array([[0.8, 0.1, 0.1],
+                           [0.6, 0.2, 0.2],
+                           [0.0, 0.9, 0.1],
+                           [0.0, 1.0, 0.0],
+                           [0.3, 0.3, 0.4],
+                           [0.2, 0.0, 0.85]])
+        labels = np.array([0, 0, 1, 1, 0, 2])
+        perm = np.random.permutation(len(labels))
+        logits, labels = logits[perm], labels[perm]
+        true_ece = 4/6.0 * (1 - (0.8+0.85+0.9+1.0)/4)
+        pred_ece = get_ece(logits, labels, num_bins=3)
+        self.assertAlmostEqual(pred_ece, true_ece)
 
 if __name__ == '__main__':
     unittest.main()
