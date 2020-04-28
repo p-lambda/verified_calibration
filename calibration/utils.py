@@ -35,6 +35,7 @@ def get_equal_bins(probs: List[float], num_bins: int=10) -> Bins:
         next_first_prob = binned_data[i + 1][0]
         bins.append((last_prob + next_first_prob) / 2.0)
     bins.append(1.0)
+    bins = sorted(list(set(bins)))
     return bins
 
 
