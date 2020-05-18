@@ -1,6 +1,6 @@
 # Uncertainty Calibration Library
 
-This repository contains library code to measure the calibration error of models, including confidence intervals computed by Bootstrap resampling, and code to recalibrate models. Our functions estimate the calibration error and ECE more accurately than prior "plugin" estimators and we provide Bootstrap confidence intervals. See [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155).
+This repository contains library code to measure the calibration error of models, including confidence intervals computed by Bootstrap resampling, and code to recalibrate models. Our functions estimate the calibration error and ECE more accurately than prior "plugin" estimators and we provide Bootstrap confidence intervals. See [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) for more details.
 
 Motivating example for uncertainty calibration: Calster and Vickers 2015 train a random forest that takes in features such as tumor size and presence of teratoma, and tries to predict the probability a patient has testicular cancer. They note that for a large number of patients, the model predicts around a 20% chance of cancer. In reality, around 40% of these patients had cancer. This underestimation can lead to doctors prescribing the wrong treatment---in a situation where many lives are at stake.
 
@@ -68,7 +68,7 @@ If you find this library useful please consider citing our paper:
 
 ## Advanced: ECE, Debiasing, and Top-Label Calibration Error
 
-By default, our library measure per-class, root-mean-squared calibration error, and uses the techniques in [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) to accurately estimate the calibration error. However, we also support measuring the ECE [Guo et al](https://arxiv.org/abs/1706.04599) and use older, less accurate, ways of estimating the calibration error.
+By default, our library measure per-class, root-mean-squared calibration error, and uses the techniques in [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) to accurately estimate the calibration error. However, we also support measuring the ECE [(Guo et al)](https://arxiv.org/abs/1706.04599) and use older, less accurate, ways of estimating the calibration error.
 
 To measure the ECE as in [Guo et al](https://arxiv.org/abs/1706.04599):
 
