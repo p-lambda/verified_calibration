@@ -10,22 +10,22 @@ import lib.utils as utils
 np.random.seed(0)  # Keep results consistent.
 
 
-def calibrate_marginals_experiment(logits, labels, k):
+def calibrate_marginals_experiment(probs, labels, k):
     num_calib = 3000
     num_bin = 3000
     num_cert = 4000
-    assert(logits.shape[0] == num_calib + num_bin + num_cert)
+    assert(probs.shape[0] == num_calib + num_bin + num_cert)
     num_bins = 100
     bootstrap_samples = 100
     # First split by label? To ensure equal class numbers? Do this later.
     labels = utils.get_labels_one_hot(labels[:], k)
-    mse = np.mean(np.square(labels - logits))
+    mse = np.mean(np.square(labels - probs))
     print('original mse is ', mse)
-    calib_logits = logits[:num_calib, :]
+    calib_probs = probs[:num_calib, :]
     calib_labels = labels[:num_calib, :]
-    bin_logits = logits[num_calib:num_calib + num_bin, :]
+    bin_probs = probs[num_calib:num_calib + num_bin, :]
     bin_labels = labels[num_calib:num_calib + num_bin, :]
-    cert_logits = logits[num_calib + num_bin:, :]
+    cert_probs = probs[num_calib + num_bin:, :]
     cert_labels = labels[num_calib + num_bin:, :]
     mses = []
     unbiased_ces = []
@@ -37,26 +37,26 @@ def calibrate_marginals_experiment(logits, labels, k):
         platts = []
         platt_binners_equal_points = []
         for l in range(k):
-            platt_l = utils.get_platt_scaler(calib_logits[:, l], calib_labels[:, l])
+            platt_l = utils.get_platt_scaler(calib_probs[:, l], calib_labels[:, l])
             platts.append(platt_l)
-            cal_logits_l = platt_l(calib_logits[:, l])
-            bins_l = utils.get_equal_bins(cal_logits_l, num_bins=num_bins)
-            cal_bin_logits_l = platt_l(bin_logits[:, l])
-            platt_binner_l = utils.get_discrete_calibrator(cal_bin_logits_l, bins_l)
+            cal_probs_l = platt_l(calib_probs[:, l])
+            bins_l = utils.get_equal_bins(cal_probs_l, num_bins=num_bins)
+            cal_bin_probs_l = platt_l(bin_probs[:, l])
+            platt_binner_l = utils.get_discrete_calibrator(cal_bin_probs_l, bins_l)
             platt_binners_equal_points.append(platt_binner_l)
 
         # Write a function that takes data and outputs the mse, ce
-        def get_mse_ce(logits, labels, ce_est):
+        def get_mse_ce(probs, labels, ce_est):
             mses = []
             ces = []
-            logits = np.array(logits)
+            probs = np.array(probs)
             labels = np.array(labels)
             for l in range(k):
-                cal_logits_l = platt_binners_equal_points[l](platts[l](logits[:, l]))
-                data = list(zip(cal_logits_l, labels[:, l]))
-                bins_l = utils.get_discrete_bins(cal_logits_l)
+                cal_probs_l = platt_binners_equal_points[l](platts[l](probs[:, l]))
+                data = list(zip(cal_probs_l, labels[:, l]))
+                bins_l = utils.get_discrete_bins(cal_probs_l)
                 binned_data = utils.bin(data, bins_l)
-                # probs = platts[l](logits[:, l])
+                # probs = platts[l](probs[:, l])
                 # for p in [1, 5, 10, 20, 50, 85, 88.5, 92, 94, 96, 98, 100]:
                 #     print(np.percentile(probs, p))
                 # import time
@@ -68,26 +68,26 @@ def calibrate_marginals_experiment(logits, labels, k):
             return np.mean(mses), np.mean(ces)
 
         def plugin_ce_squared(data):
-            logits, labels = zip(*data)
-            return get_mse_ce(logits, labels, lambda x: utils.plugin_ce(x) ** 2)[1]
+            probs, labels = zip(*data)
+            return get_mse_ce(probs, labels, lambda x: utils.plugin_ce(x) ** 2)[1]
         def mse(data):
-            logits, labels = zip(*data)
-            return get_mse_ce(logits, labels, lambda x: utils.plugin_ce(x) ** 2)[0]
+            probs, labels = zip(*data)
+            return get_mse_ce(probs, labels, lambda x: utils.plugin_ce(x) ** 2)[0]
         def unbiased_ce_squared(data):
-            logits, labels = zip(*data)
-            return get_mse_ce(logits, labels, utils.unbiased_square_ce)[1]
+            probs, labels = zip(*data)
+            return get_mse_ce(probs, labels, utils.unbiased_square_ce)[1]
 
         mse, unbiased_ce = get_mse_ce(
-            cert_logits, cert_labels, utils.unbiased_square_ce)
+            cert_probs, cert_labels, utils.unbiased_square_ce)
         mse, biased_ce = get_mse_ce(
-            cert_logits, cert_labels, lambda x: utils.plugin_ce(x) ** 2)
+            cert_probs, cert_labels, lambda x: utils.plugin_ce(x) ** 2)
         mses.append(mse)
         unbiased_ces.append(unbiased_ce)
         biased_ces.append(biased_ce)
         print('biased ce: ', np.sqrt(biased_ce))
         print('mse: ', mse)
         print('improved ce: ', np.sqrt(unbiased_ce))
-        data = list(zip(list(cert_logits), list(cert_labels)))
+        data = list(zip(list(cert_probs), list(cert_labels)))
         std_biased_ces.append(
             utils.bootstrap_std(data, plugin_ce_squared, num_samples=bootstrap_samples))
         std_unbiased_ces.append(
@@ -130,9 +130,9 @@ if __name__ == "__main__":
     if not os.path.exists('./saved_files/debiased_estimator/'):
         os.mkdir('./saved_files/debiased_estimator/')
 
-    logits, labels = utils.load_test_logits_labels('data/cifar_logits.dat')
-    predictions = np.argmax(logits, 1)
-    probabilities = np.max(logits, 1)
+    probs, labels = utils.load_test_probs_labels('data/cifar_probs.dat')
+    predictions = np.argmax(probs, 1)
+    probabilities = np.max(probs, 1)
     accuracy = np.mean(labels[:] == predictions)
     print('accuracy is ' + str(accuracy))
-    calibrate_marginals_experiment(logits, labels, k=10)
+    calibrate_marginals_experiment(probs, labels, k=10)

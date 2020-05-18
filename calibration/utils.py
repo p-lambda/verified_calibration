@@ -55,18 +55,18 @@ def get_discrete_bins(data: List[float]) -> Bins:
 
 # User facing functions to measure calibration error.
 
-def get_top_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1):
-    return get_calibration_error_uncertainties(logits, labels, p, alpha, mode='top-label')
+def get_top_calibration_error_uncertainties(probs, labels, p=2, alpha=0.1):
+    return get_calibration_error_uncertainties(probs, labels, p, alpha, mode='top-label')
 
 
-def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1, mode='marginal'):
+def get_calibration_error_uncertainties(probs, labels, p=2, alpha=0.1, mode='marginal'):
     """Get confidence intervals for the calibration error.
 
     Args:
-        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
-            we assume binary classification and logits[i] is the model's confidence
-            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
-            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        probs: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and probs[i] is the model's confidence
+            the i-th example is 1. Otherwise, probs[i][j] is the model's confidence
+            the i-th example is j, with 0 <= probs[i][j] <= 1.
         labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
             example. In the binary classification setting, labels[i] must be 0 or 1,
             in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
@@ -82,26 +82,26 @@ def get_calibration_error_uncertainties(logits, labels, p=2, alpha=0.1, mode='ma
         the bootstrap estimates. When p is not 2 (e.g. for the ECE where p = 1), this
         can be used as a debiased estimate as well.
     """
-    data = list(zip(logits, labels))
+    data = list(zip(probs, labels))
     def ce_functional(data):
-        logits, labels = zip(*data)
-        return get_calibration_error(logits, labels, p, debias=False, mode=mode)
+        probs, labels = zip(*data)
+        return get_calibration_error(probs, labels, p, debias=False, mode=mode)
     [lower, mid, upper] = bootstrap_uncertainty(data, ce_functional, num_samples=100, alpha=alpha)
     return [lower, mid, upper]
 
 
-def get_top_calibration_error(logits, labels, p=2, debias=True):
-    return get_calibration_error(logits, labels, p, debias, mode='top-label')
+def get_top_calibration_error(probs, labels, p=2, debias=True):
+    return get_calibration_error(probs, labels, p, debias, mode='top-label')
 
 
-def get_calibration_error(logits, labels, p=2, debias=True, mode='marginal'):
+def get_calibration_error(probs, labels, p=2, debias=True, mode='marginal'):
     """Get the calibration error.
 
     Args:
-        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
-            we assume binary classification and logits[i] is the model's confidence
-            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
-            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        probs: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and probs[i] is the model's confidence
+            the i-th example is 1. Otherwise, probs[i][j] is the model's confidence
+            the i-th example is j, with 0 <= probs[i][j] <= 1.
         labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
             example. In the binary classification setting, labels[i] must be 0 or 1,
             in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
@@ -119,27 +119,27 @@ def get_calibration_error(logits, labels, p=2, debias=True, mode='marginal'):
         method or binning method, and then calls the corresponding function. For
         more explicit control, use lower_bound_scaling_ce or get_binning_ce.
     """
-    if is_discrete(logits):
-        return get_binning_ce(logits, labels, p, debias, mode=mode)
+    if is_discrete(probs):
+        return get_binning_ce(probs, labels, p, debias, mode=mode)
     else:
-        return lower_bound_scaling_ce(logits, labels, p, debias, mode=mode)
+        return lower_bound_scaling_ce(probs, labels, p, debias, mode=mode)
 
 
-def lower_bound_scaling_top_ce(logits, labels, p=2, debias=True, num_bins=15,
+def lower_bound_scaling_top_ce(probs, labels, p=2, debias=True, num_bins=15,
                                binning_scheme=get_equal_bins):
-    return lower_bound_scaling_ce(logits, labels, p, debias, num_bins, binning_scheme,
+    return lower_bound_scaling_ce(probs, labels, p, debias, num_bins, binning_scheme,
                                   mode='top-label')
 
 
-def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15,
+def lower_bound_scaling_ce(probs, labels, p=2, debias=True, num_bins=15,
                            binning_scheme=get_equal_bins, mode='marginal'):
     """Lower bound the calibration error of a model with continuous outputs.
 
     Args:
-        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
-            we assume binary classification and logits[i] is the model's confidence
-            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
-            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        probs: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and probs[i] is the model's confidence
+            the i-th example is 1. Otherwise, probs[i][j] is the model's confidence
+            the i-th example is j, with 0 <= probs[i][j] <= 1.
         labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
             example. In the binary classification setting, labels[i] must be 0 or 1,
             in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
@@ -159,21 +159,21 @@ def lower_bound_scaling_ce(logits, labels, p=2, debias=True, num_bins=15,
         For scaling methods we cannot estimate the calibration error, but only a
         lower bound.
     """
-    return _get_ce(logits, labels, p, debias, num_bins, binning_scheme, mode=mode)
+    return _get_ce(probs, labels, p, debias, num_bins, binning_scheme, mode=mode)
 
 
-def get_binning_top_ce(logits, labels, p=2, debias=True, mode='marginal'):
-    return get_binning_ce(logits, labels, p, debias, mode='top-label')
+def get_binning_top_ce(probs, labels, p=2, debias=True, mode='marginal'):
+    return get_binning_ce(probs, labels, p, debias, mode='top-label')
 
 
-def get_binning_ce(logits, labels, p=2, debias=True, mode='marginal'):
+def get_binning_ce(probs, labels, p=2, debias=True, mode='marginal'):
     """Estimate the calibration error of a binned model.
 
     Args:
-        logits: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
-            we assume binary classification and logits[i] is the model's confidence
-            the i-th example is 1. Otherwise, logits[i][j] is the model's confidence
-            the i-th example is j, with 0 <= logits[i][j] <= 1.
+        probs: A numpy array of shape (n,) or (n, k). If the shape is (n,) then
+            we assume binary classification and probs[i] is the model's confidence
+            the i-th example is 1. Otherwise, probs[i][j] is the model's confidence
+            the i-th example is j, with 0 <= probs[i][j] <= 1.
         labels: A numpy array of shape (n,). labels[i] denotes the label of the i-th
             example. In the binary classification setting, labels[i] must be 0 or 1,
             in the k class setting labels[i] is an integer with 0 <= labels[i] <= k-1.
@@ -188,24 +188,24 @@ def get_binning_ce(logits, labels, p=2, debias=True, mode='marginal'):
     Returns:
         Estimated calibration error, a floating point value.
     """
-    return _get_ce(logits, labels, p, debias, None, binning_scheme=get_discrete_bins, mode=mode)
+    return _get_ce(probs, labels, p, debias, None, binning_scheme=get_discrete_bins, mode=mode)
 
 
-def get_ece(logits, labels, debias=False, num_bins=15, mode='top-label'):
-    return lower_bound_scaling_ce(logits, labels, p=1, debias=debias, num_bins=num_bins,
+def get_ece(probs, labels, debias=False, num_bins=15, mode='top-label'):
+    return lower_bound_scaling_ce(probs, labels, p=1, debias=debias, num_bins=num_bins,
                                   binning_scheme=get_equal_prob_bins, mode=mode)
 
 
-def _get_ce(logits, labels, p, debias, num_bins, binning_scheme, mode='marginal'):
-    def ce_1d(logits, labels):
-        assert logits.shape == labels.shape
-        assert len(logits.shape) == 1
-        data = list(zip(logits, labels))
+def _get_ce(probs, labels, p, debias, num_bins, binning_scheme, mode='marginal'):
+    def ce_1d(probs, labels):
+        assert probs.shape == labels.shape
+        assert len(probs.shape) == 1
+        data = list(zip(probs, labels))
         if binning_scheme == get_discrete_bins:
             assert(num_bins is None)
-            bins = binning_scheme(logits)
+            bins = binning_scheme(probs)
         else:
-            bins = binning_scheme(logits, num_bins=num_bins)
+            bins = binning_scheme(probs, num_bins=num_bins)
         if p == 2 and debias:
             return unbiased_l2_ce(bin(data, bins))
         elif debias:
@@ -214,51 +214,51 @@ def _get_ce(logits, labels, p, debias, num_bins, binning_scheme, mode='marginal'
             return plugin_ce(bin(data, bins), power=p)
     if mode != 'marginal' and mode != 'top-label':
         raise ValueError("mode must be 'marginal' or 'top-label'.")
-    logits = np.array(logits)
+    probs = np.array(probs)
     labels = np.array(labels)
     if not(np.issubdtype(labels.dtype, np.integer)):
         raise ValueError('labels should an integer numpy array.')
     if len(labels.shape) != 1:
         raise ValueError('labels should be a 1D numpy array.')
-    if logits.shape[0] != labels.shape[0]:
-        raise ValueError('labels and logits should have the same number of entries.')
-    if len(logits.shape) == 1:
+    if probs.shape[0] != labels.shape[0]:
+        raise ValueError('labels and probs should have the same number of entries.')
+    if len(probs.shape) == 1:
         # If 1D (2-class setting), compute the regular calibration error.
         if np.min(labels) != 0 or np.max(labels) != 1:
-            raise ValueError('If logits is 1D, each label should be 0 or 1.')
-        return ce_1d(logits, labels)
-    elif len(logits.shape) == 2:
-        if np.min(labels) != 0 or np.max(labels) != logits.shape[1] - 1:
+            raise ValueError('If probs is 1D, each label should be 0 or 1.')
+        return ce_1d(probs, labels)
+    elif len(probs.shape) == 2:
+        if np.min(labels) != 0 or np.max(labels) != probs.shape[1] - 1:
             raise ValueError('labels should be between 0 and num_classes - 1.')
         if mode == 'marginal':
-            labels_one_hot = get_labels_one_hot(labels, k=logits.shape[1])
-            assert logits.shape == labels_one_hot.shape
+            labels_one_hot = get_labels_one_hot(labels, k=probs.shape[1])
+            assert probs.shape == labels_one_hot.shape
             marginal_ces = []
-            for k in range(logits.shape[1]):
-                cur_logits = logits[:, k]
+            for k in range(probs.shape[1]):
+                cur_probs = probs[:, k]
                 cur_labels = labels_one_hot[:, k]
-                marginal_ces.append(ce_1d(cur_logits, cur_labels) ** p)
+                marginal_ces.append(ce_1d(cur_probs, cur_labels) ** p)
             return np.mean(marginal_ces) ** (1.0 / p)
         elif mode == 'top-label':
-            preds = get_top_predictions(logits)
-            correct = (preds == labels).astype(logits.dtype)
-            confidences = get_top_probs(logits)
+            preds = get_top_predictions(probs)
+            correct = (preds == labels).astype(probs.dtype)
+            confidences = get_top_probs(probs)
             return ce_1d(confidences, correct)
     else:
-        raise ValueError('logits should be a 1D or 2D numpy array.')
+        raise ValueError('probs should be a 1D or 2D numpy array.')
 
 
-def is_discrete(logits):
-    logits = np.array(logits)
-    if len(logits.shape) == 1:
-        return enough_duplicates(logits)
-    elif len(logits.shape) == 2:
-        for k in range(logits.shape[1]):
-            if not enough_duplicates(logits[:, k]):
+def is_discrete(probs):
+    probs = np.array(probs)
+    if len(probs.shape) == 1:
+        return enough_duplicates(probs)
+    elif len(probs.shape) == 2:
+        for k in range(probs.shape[1]):
+            if not enough_duplicates(probs[:, k]):
                 return False
         return True
     else:
-        raise ValueError('logits must be a 1D or 2D numpy array.')
+        raise ValueError('probs must be a 1D or 2D numpy array.')
 
 
 def enough_duplicates(array):
@@ -348,7 +348,8 @@ def unbiased_l2_ce(binned_data: BinnedData) -> float:
 def normal_debiased_ce(binned_data : BinnedData, power=1, resamples=1000) -> float:
     bin_sizes = np.array(list(map(len, binned_data)))
     if np.min(bin_sizes) <= 1:
-        raise ValueError('Every bin must have at least 2 points for debiased estimator.')
+        raise ValueError('Every bin must have at least 2 points for debiased estimator. '
+                         'Try adding the argument debias=False to your function call.')
     label_means = np.array(list(map(lambda l: np.mean([b for a, b in l]), binned_data)))
     label_stddev = np.sqrt(label_means * (1 - label_means) / bin_sizes)
     model_vals = np.array(list(map(lambda l: np.mean([a for a, b in l]), binned_data)))
@@ -371,16 +372,16 @@ def normal_debiased_ce(binned_data : BinnedData, power=1, resamples=1000) -> flo
 
 # MSE Estimators.
 
-def eval_top_mse(probs, logits, labels):
-    correct = (get_top_predictions(logits) == labels)
-    return np.mean(np.square(probs - correct))
+def eval_top_mse(calibrated_probs, probs, labels):
+    correct = (get_top_predictions(probs) == labels)
+    return np.mean(np.square(calibrated_probs - correct))
 
 
-def eval_marginal_mse(probs, logits, labels):
-    assert probs.shape == logits.shape
-    k = logits.shape[1]
+def eval_marginal_mse(calibrated_probs, probs, labels):
+    assert calibrated_probs.shape == probs.shape
+    k = probs.shape[1]
     labels_one_hot = get_labels_one_hot(np.array(labels), k)
-    return np.mean(np.square(probs - labels_one_hot)) * probs.shape[1] / 2.0
+    return np.mean(np.square(calibrated_probs - labels_one_hot)) * calibrated_probs.shape[1] / 2.0
 
 
 # Bootstrap utilities.
@@ -474,31 +475,31 @@ def get_discrete_calibrator(model_probs, bins):
 
 # Utils to load and save files.
 
-def save_test_logits_labels(dataset, model, filename):
+def save_test_probs_labels(dataset, model, filename):
     (x_train, y_train), (x_test, y_test) = dataset.load_data()
-    logits = model.predict(x_test) 
-    pickle.dump((logits, y_test), open(filename, "wb"))
+    probs = model.predict(x_test) 
+    pickle.dump((probs, y_test), open(filename, "wb"))
 
 
-def load_test_logits_labels(filename):
-    logits, labels = pickle.load(open(filename, "rb"))
+def load_test_probs_labels(filename):
+    probs, labels = pickle.load(open(filename, "rb"))
     if len(labels.shape) > 1:
         labels = labels[:, 0]
-    indices = np.random.choice(list(range(len(logits))), size=len(logits), replace=False)
-    logits = np.array([logits[i] for i in indices])
+    indices = np.random.choice(list(range(len(probs))), size=len(probs), replace=False)
+    probs = np.array([probs[i] for i in indices])
     labels = np.array([labels[i] for i in indices])
-    return logits, labels
+    return probs, labels
 
 
-def get_top_predictions(logits):
-    return np.argmax(logits, 1)
+def get_top_predictions(probs):
+    return np.argmax(probs, 1)
 
 
-def get_top_probs(logits):
-    return np.max(logits, 1)
+def get_top_probs(probs):
+    return np.max(probs, 1)
 
 
-def get_accuracy(logits, labels):
+def get_accuracy(probs, labels):
     return sum(labels == predictions) * 1.0 / len(labels)
 
 

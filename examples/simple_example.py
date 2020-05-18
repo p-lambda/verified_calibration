@@ -15,6 +15,10 @@ def main():
     calibration_error = calibration.get_calibration_error(zs, ys)
     print("Uncalibrated model calibration error is > %.2f%%" % (100 * calibration_error))
 
+    # Estimate the ECE.
+    ece = calibration.get_ece(zs, ys)
+    print("Uncalibrated model ECE is > %.2f%%" % (100 * ece))
+
     # Use Platt binning to train a recalibrator.
     calibrator = calibration.PlattBinnerCalibrator(num_points, num_bins=10)
     calibrator.train_calibration(np.array(zs), ys)

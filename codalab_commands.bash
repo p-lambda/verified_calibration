@@ -6,7 +6,7 @@
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/cifar_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=2 \
+--probs_path=data/cifar_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=2 \
 --calibration_data_size=1000 --bin_data_size=1000 --plot_save_file=l2_lower_bound_cifar_plot.png \
 --binning=equal_bins --num_samples=1000' \
 --request-queue tag=nlp -n cifar_l2_lower_bound
@@ -14,7 +14,7 @@ python3 experiments/platt_not_calibrated/lower_bounds.py \
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/cifar_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=1 \
+--probs_path=data/cifar_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=1 \
 --calibration_data_size=1000 --bin_data_size=1000 --plot_save_file=l1_lower_bound_cifar_plot.png \
 --binning=equal_bins --num_samples=1000' \
 --request-queue tag=nlp -n cifar_l1_lower_bound
@@ -22,7 +22,7 @@ python3 experiments/platt_not_calibrated/lower_bounds.py \
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/cifar_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=1 \
+--probs_path=data/cifar_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128" --lp=1 \
 --calibration_data_size=1000 --bin_data_size=1000 --plot_save_file=prob_lower_bound_cifar_plot.png \
 --binning=equal_prob_bins --num_samples=1000' \
 --request-queue tag=nlp -n cifar_prob_lower_bound
@@ -32,7 +32,7 @@ python3 experiments/platt_not_calibrated/lower_bounds.py \
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/imagenet_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=2 \
+--probs_path=data/imagenet_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=2 \
 --calibration_data_size=20000 --bin_data_size=5000 --plot_save_file=l2_lower_bound_imnet_plot.png \
 --binning=equal_bins --num_samples=1000' \
 --request-queue tag=nlp -n imagenet_l2_lower_bound
@@ -40,7 +40,7 @@ python3 experiments/platt_not_calibrated/lower_bounds.py \
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/imagenet_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=1 \
+--probs_path=data/imagenet_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=1 \
 --calibration_data_size=20000 --bin_data_size=5000 --plot_save_file=l1_lower_bound_imnet_plot.png \
 --binning=equal_bins --num_samples=1000' \
 --request-queue tag=nlp -n imagenet_l1_lower_bound
@@ -48,7 +48,7 @@ python3 experiments/platt_not_calibrated/lower_bounds.py \
 cl run :experiments :calibration :data \
 'export PYTHONPATH="."; \
 python3 experiments/platt_not_calibrated/lower_bounds.py \
---logits_path=data/imagenet_logits.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=1 \
+--probs_path=data/imagenet_probs.dat --bins_list="2, 4, 8, 16, 32, 64, 128, 256, 512" --lp=1 \
 --calibration_data_size=20000 --bin_data_size=5000 --plot_save_file=prob_lower_bound_imnet_plot.png \
 --binning=equal_prob_bins --num_samples=1000' \
 --request-queue tag=nlp -n imagenet_prob_lower_bound

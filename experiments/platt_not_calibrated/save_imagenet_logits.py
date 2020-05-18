@@ -7,8 +7,8 @@ import numpy as np
 import pickle
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--save_file_path', default='data/imagenet_logits.dat', type=str,
-                    help='Name of file to save logits, labels pair.')
+parser.add_argument('--save_file_path', default='data/imagenet_probs.dat', type=str,
+                    help='Name of file to save probs, labels pair.')
 parser.add_argument('--load_folder', default='.', type=str,
                     help='Path to folder containing ImageNet images.')
 parser.add_argument('--batch_size', default=32, type=int,
@@ -22,5 +22,5 @@ if __name__ == "__main__":
 		args.load_folder, shuffle=False, batch_size=args.batch_size, target_size=(224, 224))
 	labels = generator.classes
 	num_steps = int(np.ceil(len(labels) * 1.0 / args.batch_size))
-	logits = vgg_model.predict_generator(generator, steps=num_steps)
-	pickle.dump((logits, labels), open(args.save_file_path, "wb"))
+	probs = vgg_model.predict_generator(generator, steps=num_steps)
+	pickle.dump((probs, labels), open(args.save_file_path, "wb"))

@@ -10,8 +10,8 @@ import calibration as cal
 np.random.seed(0)  # Keep results consistent.
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--logits_file', default='data/cifar_logits.dat', type=str,
-                    help='Name of file to load logits, labels pair.')
+parser.add_argument('--probs_file', default='data/cifar_probs.dat', type=str,
+                    help='Name of file to load probs, labels pair.')
 parser.add_argument('--platt_data_size', default=2000, type=int,
                     help='Number of examples to use for Platt Scaling.')
 parser.add_argument('--bin_data_size', default=2000, type=int,
@@ -21,16 +21,16 @@ parser.add_argument('--num_bins', default=100, type=int,
 
 
 def compare_scaling_binning_squared_ce(
-    logits, labels, platt_data_size, bin_data_size, num_bins, ver_base_size=2000,
+    probs, labels, platt_data_size, bin_data_size, num_bins, ver_base_size=2000,
     ver_size_increment=1000, max_ver_size=7000, num_resamples=1000,
     save_prefix='./saved_files/debiased_estimator/', lp=2,
     Calibrator=cal.PlattBinnerTopCalibrator):
     calibrator = Calibrator(num_calibration=platt_data_size, num_bins=num_bins)
-    calibrator.train_calibration(logits[:platt_data_size], labels[:platt_data_size])
-    predictions = cal.get_top_predictions(logits)
+    calibrator.train_calibration(probs[:platt_data_size], labels[:platt_data_size])
+    predictions = cal.get_top_predictions(probs)
     correct = (predictions == labels).astype(np.int32)
     verification_correct = correct[bin_data_size:]
-    verification_probs = calibrator.calibrate(logits[bin_data_size:])
+    verification_probs = calibrator.calibrate(probs[bin_data_size:])
     verification_sizes = list(range(ver_base_size, 1 + min(max_ver_size, len(verification_probs)),
                               ver_size_increment))
     estimators = [lambda p, l: cal.get_calibration_error(p, l, p=lp, debias=False) ** lp,
@@ -47,18 +47,18 @@ def compare_scaling_binning_squared_ce(
 
 
 def compare_scaling_ce(
-    logits, labels, platt_data_size, bin_data_size, num_bins, ver_base_size=2000,
+    probs, labels, platt_data_size, bin_data_size, num_bins, ver_base_size=2000,
     ver_size_increment=1000, max_ver_size=7000, num_resamples=1000,
     save_prefix='./saved_files/debiased_estimator/', lp=1, Calibrator=cal.PlattTopCalibrator):
     calibrator = Calibrator(num_calibration=platt_data_size, num_bins=num_bins)
-    calibrator.train_calibration(logits[:platt_data_size], labels[:platt_data_size])
-    predictions = cal.get_top_predictions(logits)
+    calibrator.train_calibration(probs[:platt_data_size], labels[:platt_data_size])
+    predictions = cal.get_top_predictions(probs)
     correct = (predictions == labels).astype(np.int32)
     verification_correct = correct[bin_data_size:]
-    verification_probs = calibrator.calibrate(logits[bin_data_size:])
+    verification_probs = calibrator.calibrate(probs[bin_data_size:])
     verification_sizes = list(range(ver_base_size, 1 + min(max_ver_size, len(verification_probs)),
                               ver_size_increment))
-    binning_probs = calibrator.calibrate(logits[:bin_data_size])
+    binning_probs = calibrator.calibrate(probs[:bin_data_size])
     bins = cal.get_equal_bins(binning_probs, num_bins=num_bins)
     def plugin_estimator(p, l):
         data = list(zip(p, l))
@@ -144,57 +144,57 @@ def plot_histograms(errors, num_resamples, save_prefix, num_bins):
 
 
 def cifar_experiments():
-    logits, labels = cal.load_test_logits_labels('data/cifar_logits.dat')
+    probs, labels = cal.load_test_probs_labels('data/cifar_probs.dat')
     if not os.path.exists('./saved_files'):
         os.mkdir('./saved_files')
     if not os.path.exists('./saved_files/debiased_estimator/'):
         os.mkdir('./saved_files/debiased_estimator/')
     save_prefix = './saved_files/debiased_estimator/'
     compare_scaling_binning_squared_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
         save_prefix=save_prefix+"cifar_scaling_binning_")
     compare_scaling_binning_squared_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
         save_prefix=save_prefix+"cifar_scaling_binning_")
     compare_scaling_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
         save_prefix=save_prefix+"cifar_scaling_ece_")
     compare_scaling_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
         save_prefix=save_prefix+"cifar_scaling_ece_")
 
 
 def imagenet_experiments():
-    logits, labels = cal.load_test_logits_labels('data/imagenet_logits.dat')
+    probs, labels = cal.load_test_probs_labels('data/imagenet_probs.dat')
     if not os.path.exists('./saved_files'):
         os.mkdir('./saved_files')
     if not os.path.exists('./saved_files/debiased_estimator/'):
         os.mkdir('./saved_files/debiased_estimator/')
     save_prefix = './saved_files/debiased_estimator/'
     compare_scaling_binning_squared_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
         save_prefix=save_prefix+"imnet_scaling_binning_")
     compare_scaling_binning_squared_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
         save_prefix=save_prefix+"imnet_scaling_binning_")
     compare_scaling_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=100,
         save_prefix=save_prefix+"imnet_scaling_ece_")
     compare_scaling_ce(
-        logits, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
+        probs, labels, platt_data_size=3000, bin_data_size=3000, num_bins=15,
         save_prefix=save_prefix+"imnet_scaling_ece_")
 
 
 def parse_input():
     args = parser.parse_args()
-    logits, labels = cal.load_test_logits_labels(args.logits_file)
+    probs, labels = cal.load_test_probs_labels(args.probs_file)
     if not os.path.exists('./saved_files'):
         os.mkdir('./saved_files')
     if not os.path.exists('./saved_files/debiased_estimator/'):
         os.mkdir('./saved_files/debiased_estimator/')
     save_prefix = './saved_files/debiased_estimator/'
     compare_scaling_binning_squared_ce(
-        logits, labels, args.platt_data_size, args.bin_data_size, args.num_bins,
+        probs, labels, args.platt_data_size, args.bin_data_size, args.num_bins,
         save_prefix=save_prefix)
 
 

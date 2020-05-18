@@ -10,8 +10,8 @@ import calibration as cal
 np.random.seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--logits_path', default='data/cifar_logits.dat', type=str,
-                    help='Name of file to load logits, labels pair.')
+parser.add_argument('--probs_path', default='data/cifar_probs.dat', type=str,
+                    help='Name of file to load probs, labels pair.')
 parser.add_argument('--calibration_data_size', default=1000, type=int,
                     help='Number of examples to use for Platt Scaling.')
 parser.add_argument('--bin_data_size', default=1000, type=int,
@@ -29,16 +29,16 @@ parser.add_argument('--num_samples', default=1000, type=int,
                     help='Number of resamples for bootstrap confidence intervals.')
 
 
-def lower_bound_experiment(logits, labels, calibration_data_size, bin_data_size, bins_list,
+def lower_bound_experiment(probs, labels, calibration_data_size, bin_data_size, bins_list,
                            save_name='cmp_est', binning_func=cal.get_equal_bins, lp=2,
                            num_samples=1000):
-    # Shuffle the logits and labels.
+    # Shuffle the probs and labels.
     np.random.seed(0)  # Keep results consistent.
-    indices = np.random.choice(list(range(len(logits))), size=len(logits), replace=False)
-    logits = [logits[i] for i in indices]
+    indices = np.random.choice(list(range(len(probs))), size=len(probs), replace=False)
+    probs = [probs[i] for i in indices]
     labels = [labels[i] for i in indices]
-    predictions = cal.get_top_predictions(logits)
-    probs = cal.get_top_probs(logits)
+    predictions = cal.get_top_predictions(probs)
+    probs = cal.get_top_probs(probs)
     correct = (predictions == labels)
     print('num_correct: ', sum(correct))
     # Platt scale on first chunk of data
@@ -90,8 +90,8 @@ def cifar_experiment(savefile, binning_func=cal.get_equal_bins, lp=2):
     np.random.seed(0)
     calibration_data_size = 1000
     bin_data_size = 1000
-    logits, labels = cal.load_test_logits_labels('cifar_logits.dat')
-    lower_bound_experiment(logits, labels, calibration_data_size, bin_data_size,
+    probs, labels = cal.load_test_probs_labels('cifar_probs.dat')
+    lower_bound_experiment(probs, labels, calibration_data_size, bin_data_size,
                            bins_list=[2, 4, 8, 16, 32, 64, 128], save_name=savefile,
                            binning_func=binning_func, lp=lp)
 
@@ -100,8 +100,8 @@ def imagenet_experiment(savefile, binning_func=cal.get_equal_bins, lp=2):
     np.random.seed(0)
     calibration_data_size = 20000
     bin_data_size = 5000
-    logits, labels = cal.load_test_logits_labels('imagenet_logits.dat')
-    lower_bound_experiment(logits, labels, calibration_data_size, bin_data_size,
+    probs, labels = cal.load_test_probs_labels('imagenet_probs.dat')
+    lower_bound_experiment(probs, labels, calibration_data_size, bin_data_size,
                            bins_list=[2, 4, 8, 16, 32, 64, 128, 256, 512], save_name=savefile,
                            binning_func=binning_func, lp=lp)
 
@@ -119,9 +119,9 @@ if __name__ == "__main__":
     else:
         binning = cal.get_equal_bins
 
-    logits, labels = cal.load_test_logits_labels(args.logits_path)
+    probs, labels = cal.load_test_probs_labels(args.probs_path)
     print(args.bins_list)
     lower_bound_experiment(
-        logits, labels, args.calibration_data_size, args.bin_data_size, args.bins_list,
+        probs, labels, args.calibration_data_size, args.bin_data_size, args.bins_list,
         save_name=prefix+args.plot_save_file, binning_func=binning, lp=args.lp,
         num_samples=args.num_samples)

@@ -8,17 +8,17 @@ import os
 import calibration as cal
 
 
-def eval_top_calibration(probs, logits, labels):
-    correct = (cal.get_top_predictions(logits) == labels)
+def eval_top_calibration(probs, probs, labels):
+    correct = (cal.get_top_predictions(probs) == labels)
     data = list(zip(probs, correct))
     bins = cal.get_discrete_bins(probs)
     binned_data = cal.bin(data, bins)
     return cal.plugin_ce(binned_data) ** 2
 
 
-def eval_marginal_calibration(probs, logits, labels, plugin=True):
+def eval_marginal_calibration(probs, probs, labels, plugin=True):
     ces = []  # Compute the calibration error per class, then take the average.
-    k = logits.shape[1]
+    k = probs.shape[1]
     labels_one_hot = cal.get_labels_one_hot(np.array(labels), k)
     for c in range(k):
         probs_c = probs[:, c]
@@ -34,23 +34,23 @@ def eval_marginal_calibration(probs, logits, labels, plugin=True):
     return np.mean(ces)
 
 
-def upper_bound_marginal_calibration_unbiased(probs, logits, labels, samples=30):
-    data = list(zip(probs, logits, labels))
+def upper_bound_marginal_calibration_unbiased(probs, probs, labels, samples=30):
+    data = list(zip(probs, probs, labels))
     def evaluator(data):
-        probs, logits, labels = list(zip(*data))
-        probs, logits, labels = np.array(probs), np.array(logits), np.array(labels)
-        return eval_marginal_calibration(probs, logits, labels, plugin=False)
+        probs, probs, labels = list(zip(*data))
+        probs, probs, labels = np.array(probs), np.array(probs), np.array(labels)
+        return eval_marginal_calibration(probs, probs, labels, plugin=False)
     estimate = evaluator(data)
     conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
 
 
-def upper_bound_marginal_calibration_biased(probs, logits, labels, samples=30):
-    data = list(zip(probs, logits, labels))
+def upper_bound_marginal_calibration_biased(probs, probs, labels, samples=30):
+    data = list(zip(probs, probs, labels))
     def evaluator(data):
-        probs, logits, labels = list(zip(*data))
-        probs, logits, labels = np.array(probs), np.array(logits), np.array(labels)
-        return eval_marginal_calibration(probs, logits, labels, plugin=True)
+        probs, probs, labels = list(zip(*data))
+        probs, probs, labels = np.array(probs), np.array(probs), np.array(labels)
+        return eval_marginal_calibration(probs, probs, labels, plugin=True)
     estimate = evaluator(data)
     conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
@@ -62,22 +62,22 @@ def compare_calibrators(data_sampler, num_bins, Calibrators, calibration_evaluat
 
     Args:
         data_sampler: A function that takes in 0 arguments
-            and returns calib_logits, calib_labels, eval_logits, eval_labels, mse_logits,
-            mse_labels, where calib_logits and calib_labels should be used by the calibrator
-            to calibrate, eval_logits and eval_labels should be used to measure the calibration
-            error, and mse_logits, mse_labels should be used to measure the mean-squared error.
+            and returns calib_probs, calib_labels, eval_probs, eval_labels, mse_probs,
+            mse_labels, where calib_probs and calib_labels should be used by the calibrator
+            to calibrate, eval_probs and eval_labels should be used to measure the calibration
+            error, and mse_probs, mse_labels should be used to measure the mean-squared error.
         num_bins: integer number of bins.
         Calibrators: calibrator classes from e.g. calibrators.py.
         calibration_evaluators: a list of functions. calibration_evaluators[i] takes
-            the output from the calibration method of calibrator i, eval_logits,
+            the output from the calibration method of calibrator i, eval_probs,
             eval_labels, and returns a float representing the calibration error
             (or an upper bound of it) of calibrator i. We suppose multiple calibration
             evaluators because different calibrators may require different ways
             of estimating/upper bounding calibration error.
         eval_mse: a function that takes in the output of the calibration method,
-            mse_logits, mse_labels, and returns a float representing the MSE.
+            mse_probs, mse_labels, and returns a float representing the MSE.
     """
-    calib_logits, calib_labels, eval_logits, eval_labels, mse_logits, mse_labels = data_sampler()
+    calib_probs, calib_labels, eval_probs, eval_labels, mse_probs, mse_labels = data_sampler()
     l2_ces = []
     mses = []
     train_time = 0.0
@@ -86,14 +86,14 @@ def compare_calibrators(data_sampler, num_bins, Calibrators, calibration_evaluat
     for Calibrator, i in zip(Calibrators, range(len(Calibrators))):
         calibrator = Calibrator(1, num_bins)
         start_time = time.time()
-        calibrator.train_calibration(calib_logits, calib_labels)
+        calibrator.train_calibration(calib_probs, calib_labels)
         train_time += (time.time() - start_time)
-        calibrated_probs = calibrator.calibrate(eval_logits)
+        calibrated_probs = calibrator.calibrate(eval_probs)
         start_time = time.time()
-        mid = calibration_evaluators[i](calibrated_probs, eval_logits, eval_labels)
+        mid = calibration_evaluators[i](calibrated_probs, eval_probs, eval_labels)
         eval_time += time.time() - start_time
-        cal_mse_logits = calibrator.calibrate(mse_logits)
-        mse = eval_mse(cal_mse_logits, mse_logits, mse_labels)
+        cal_mse_probs = calibrator.calibrate(mse_probs)
+        mse = eval_mse(cal_mse_probs, mse_probs, mse_labels)
         l2_ces.append(mid)
         mses.append(mse)
     # print('train_time: ', train_time)
@@ -188,40 +188,40 @@ def plot_mse_ce_curve(bins_list, l2_ces, mses, xlim=None, ylim=None,
     plt.savefig(save_path)
 
 
-def make_calibration_data_sampler(logits, labels, num_calibration):
+def make_calibration_data_sampler(probs, labels, num_calibration):
     def data_sampler():
-        assert len(logits) == len(labels)
-        indices = np.random.choice(list(range(len(logits))),
+        assert len(probs) == len(labels)
+        indices = np.random.choice(list(range(len(probs))),
                                    size=num_calibration, replace=True)
-        calib_logits = np.array([logits[i] for i in indices])
+        calib_probs = np.array([probs[i] for i in indices])
         calib_labels = np.array([labels[i] for i in indices])
-        eval_logits = logits
+        eval_probs = probs
         eval_labels = labels
-        return calib_logits, calib_labels, eval_logits, eval_labels, logits, labels
+        return calib_probs, calib_labels, eval_probs, eval_labels, probs, labels
     return data_sampler
 
 
-def make_calibration_eval_data_sampler(logits, labels, num_calib, num_eval):
+def make_calibration_eval_data_sampler(probs, labels, num_calib, num_eval):
     def data_sampler():
-        assert len(logits) == len(labels)
+        assert len(probs) == len(labels)
         calib_indices = np.random.choice(
-            list(range(len(logits))), size=num_calib, replace=True)
+            list(range(len(probs))), size=num_calib, replace=True)
         eval_indices = np.random.choice(
-            list(range(len(logits))), size=num_eval, replace=True)
-        calib_logits = np.array([logits[i] for i in calib_indices])
+            list(range(len(probs))), size=num_eval, replace=True)
+        calib_probs = np.array([probs[i] for i in calib_indices])
         calib_labels = np.array([labels[i] for i in calib_indices])
-        eval_logits = np.array([logits[i] for i in eval_indices])
+        eval_probs = np.array([probs[i] for i in eval_indices])
         eval_labels = np.array([labels[i] for i in eval_indices])
-        return calib_logits, calib_labels, eval_logits, eval_labels, logits, labels
+        return calib_probs, calib_labels, eval_probs, eval_labels, probs, labels
     return data_sampler
 
 
-def cifar10_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = cal.load_test_logits_labels(logits_path)
+def cifar10_experiment_top(probs_path, ce_save_path, mse_ce_save_path, num_trials=100):
+    probs, labels = cal.load_test_probs_labels(probs_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
-        data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
+        data_sampler=make_calibration_data_sampler(probs, labels, num_calibration),
         num_bins_list=bins_list,
         Calibrators=[cal.HistogramTopCalibrator, cal.PlattBinnerTopCalibrator],
         calibration_evaluators=[eval_top_calibration, eval_top_calibration],
@@ -232,12 +232,12 @@ def cifar10_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_tria
     plot_ces(bins_list, l2_ces, l2_stddevs, save_path=ce_save_path)
 
 
-def cifar10_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = cal.load_test_logits_labels(logits_path)
+def cifar10_experiment_marginal(probs_path, ce_save_path, mse_ce_save_path, num_trials=100):
+    probs, labels = cal.load_test_probs_labels(probs_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
-        data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
+        data_sampler=make_calibration_data_sampler(probs, labels, num_calibration),
         num_bins_list=bins_list,
         Calibrators=[cal.HistogramMarginalCalibrator,
                      cal.PlattBinnerMarginalCalibrator],
@@ -249,12 +249,12 @@ def cifar10_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num
     plot_ces(bins_list, l2_ces, l2_stddevs, save_path=ce_save_path)
 
 
-def imagenet_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_trials=100):
-    logits, labels = cal.load_test_logits_labels(logits_path)
+def imagenet_experiment_top(probs_path, ce_save_path, mse_ce_save_path, num_trials=100):
+    probs, labels = cal.load_test_probs_labels(probs_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 1000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
-        data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
+        data_sampler=make_calibration_data_sampler(probs, labels, num_calibration),
         num_bins_list=bins_list,
         Calibrators=[cal.HistogramTopCalibrator, cal.PlattBinnerTopCalibrator],
         calibration_evaluators=[eval_top_calibration, eval_top_calibration],
@@ -264,12 +264,12 @@ def imagenet_experiment_top(logits_path, ce_save_path, mse_ce_save_path, num_tri
     plot_ces(bins_list, l2_ces, l2_stddevs, save_path=ce_save_path)
 
 
-def imagenet_experiment_marginal(logits_path, ce_save_path, mse_ce_save_path, num_trials=20):
-    logits, labels = cal.load_test_logits_labels(logits_path)
+def imagenet_experiment_marginal(probs_path, ce_save_path, mse_ce_save_path, num_trials=20):
+    probs, labels = cal.load_test_probs_labels(probs_path)
     bins_list = list(range(10, 101, 10))
     num_calibration = 25000
     l2_ces, l2_stddevs, mses = vary_bin_calibration(
-        data_sampler=make_calibration_data_sampler(logits, labels, num_calibration),
+        data_sampler=make_calibration_data_sampler(probs, labels, num_calibration),
         num_bins_list=bins_list,
         Calibrators=[cal.HistogramMarginalCalibrator,
                      cal.PlattBinnerMarginalCalibrator],
@@ -289,18 +289,18 @@ if __name__ == "__main__":
     # Main marginal calibration CIFAR-10 experiment in the paper.
     np.random.seed(0)  # Keep results consistent.
     cifar10_experiment_marginal(
-        logits_path='data/cifar_logits.dat',
+        probs_path='data/cifar_probs.dat',
         ce_save_path=prefix+'cifar_marginal_ce_plot',
         mse_ce_save_path=prefix+'cifar_marginal_mse_ce_plot')
     # Top-label calibration CIFAR experiment in the Appendix, 1000 points.
     np.random.seed(0)  # Keep results consistent.
     cifar10_experiment_top(
-        logits_path='data/cifar_logits.dat',
+        probs_path='data/cifar_probs.dat',
         ce_save_path=prefix+'cifar_top_ce_plot',
         mse_ce_save_path=prefix+'cifar_top_mse_ce_plot')
     # Top-label calibration ImageNet experiment in the Appendix, 1000 points.
     np.random.seed(0)  # Keep results consistent.
     imagenet_experiment_top(
-        logits_path='data/imagenet_logits.dat',
+        probs_path='data/imagenet_probs.dat',
         ce_save_path=prefix+'imagenet_top_ce_plot',
         mse_ce_save_path=prefix+'imagenet_top_mse_ce_plot')
