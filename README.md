@@ -68,7 +68,7 @@ If you find this library useful please consider citing our paper:
 
 ## Advanced: ECE, Debiasing, and Top-Label Calibration Error
 
-By default, our library measure per-class, root-mean-squared calibration error, and uses the techniques in [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) to accurately estimate the calibration error. However, we also support measuring the ECE [(Guo et al)](https://arxiv.org/abs/1706.04599) and use older, less accurate, ways of estimating the calibration error.
+By default, our library measure per-class, root-mean-squared calibration error, and uses the techniques in [Verified Uncertainty Calibration](https://arxiv.org/abs/1909.10155) to accurately estimate the calibration error. However, we also support measuring the ECE [(Guo et al)](https://arxiv.org/abs/1706.04599) and using older, less accurate, ways of estimating the calibration error.
 
 To measure the ECE as in [Guo et al](https://arxiv.org/abs/1706.04599):
 
