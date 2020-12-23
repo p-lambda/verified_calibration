@@ -244,5 +244,10 @@ class TestUtilMethods(unittest.TestCase):
         pred_ece = get_ece(probs, labels, num_bins=3)
         self.assertAlmostEqual(pred_ece, true_ece)
 
+    def test_missing_classes_ece(self):
+        pred_ece = get_ece([[0.9,0.1], [0.8,0.2]], [0,0])
+        true_ece = 0.15
+        self.assertAlmostEqual(pred_ece, true_ece)
+
 if __name__ == '__main__':
     unittest.main()

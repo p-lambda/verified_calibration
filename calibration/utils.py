@@ -228,7 +228,7 @@ def _get_ce(probs, labels, p, debias, num_bins, binning_scheme, mode='marginal')
             raise ValueError('If probs is 1D, each label should be 0 or 1.')
         return ce_1d(probs, labels)
     elif len(probs.shape) == 2:
-        if np.min(labels) != 0 or np.max(labels) != probs.shape[1] - 1:
+        if np.min(labels) < 0 or np.max(labels) > probs.shape[1] - 1:
             raise ValueError('labels should be between 0 and num_classes - 1.')
         if mode == 'marginal':
             labels_one_hot = get_labels_one_hot(labels, k=probs.shape[1])
