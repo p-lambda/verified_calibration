@@ -105,6 +105,8 @@ In our paper, we show that:
 
 The experiments folder contains experiments for the paper.
 
+See our CodaLab worksheet https://worksheets.codalab.org/worksheets/0xb6d027ee127e422989ab9115726c5411 which contains all the experiment runs and the exact code used to produce them. You can download ImageNet logits from CodaLab as well: from https://worksheets.codalab.org/bundles/0x81c9c8a9bf6c47f59f45f6fc80790c3c download imagenet_logits.dat and put them into the data folder.
+
 We have 4 sets of experiments:
 - Showing the Platt scaling is less calibrated than reported (Section 3)
 - Comparing the scaling binning calibrator with histogram binning on CIFAR-10 and ImageNet (Section 4)
@@ -112,4 +114,3 @@ We have 4 sets of experiments:
 - Experiments showing the debiased estimator can estimate calibration error with fewer samples than standard estimator (Section 5)
 Running each experiment saves plots in the corresponding folder in saved_files
 
-See our CodaLab worksheet https://worksheets.codalab.org/worksheets/0xb6d027ee127e422989ab9115726c5411 which contains all the experiment runs and the exact code used to produce them.
