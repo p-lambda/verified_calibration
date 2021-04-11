@@ -53,16 +53,16 @@ class HistogramTopCalibrator:
 
     def train_calibration(self, probs, labels):
         assert(len(probs) >= self._num_calibration)
-        probs = utils.get_top_probs(probs)
+        top_probs = utils.get_top_probs(probs)
         predictions = utils.get_top_predictions(probs)
         correct = (predictions == labels)
-        bins = utils.get_equal_bins(probs, num_bins=self._num_bins)
+        bins = utils.get_equal_bins(top_probs, num_bins=self._num_bins)
         self._calibrator = utils.get_histogram_calibrator(
-            probs, correct, bins)
+            top_probs, correct, bins)
 
     def calibrate(self, probs):
-        probs = utils.get_top_probs(probs)
-        return self._calibrator(probs)
+        top_probs = utils.get_top_probs(probs)
+        return self._calibrator(top_probs)
 
 
 class PlattBinnerTopCalibrator:
@@ -74,18 +74,18 @@ class PlattBinnerTopCalibrator:
     def train_calibration(self, probs, labels):
         assert(len(probs) >= self._num_calibration)
         predictions = utils.get_top_predictions(probs)
-        probs = utils.get_top_probs(probs)
+        top_probs = utils.get_top_probs(probs)
         correct = (predictions == labels)
         self._platt = utils.get_platt_scaler(
-            probs, correct)
-        platt_probs = self._platt(probs)
+            top_probs, correct)
+        platt_probs = self._platt(top_probs)
         bins = utils.get_equal_bins(platt_probs, num_bins=self._num_bins)
         self._discrete_calibrator = utils.get_discrete_calibrator(
             platt_probs, bins)
 
     def calibrate(self, probs):
-        probs = self._platt(utils.get_top_probs(probs))
-        return self._discrete_calibrator(probs)
+        top_probs = self._platt(utils.get_top_probs(probs))
+        return self._discrete_calibrator(top_probs)
 
 
 class PlattTopCalibrator:
@@ -97,10 +97,10 @@ class PlattTopCalibrator:
     def train_calibration(self, probs, labels):
         assert(len(probs) >= self._num_calibration)
         predictions = utils.get_top_predictions(probs)
-        probs = utils.get_top_probs(probs)
+        top_probs = utils.get_top_probs(probs)
         correct = (predictions == labels)
         self._platt = utils.get_platt_scaler(
-            probs, correct)
+            top_probs, correct)
 
     def calibrate(self, probs):
         return self._platt(utils.get_top_probs(probs))

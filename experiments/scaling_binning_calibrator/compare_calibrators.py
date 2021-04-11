@@ -8,17 +8,17 @@ import os
 import calibration as cal
 
 
-def eval_top_calibration(probs, probs, labels):
-    correct = (cal.get_top_predictions(probs) == labels)
+def eval_top_calibration(probs, eval_probs, labels):
+    correct = (cal.get_top_predictions(eval_probs) == labels)
     data = list(zip(probs, correct))
     bins = cal.get_discrete_bins(probs)
     binned_data = cal.bin(data, bins)
     return cal.plugin_ce(binned_data) ** 2
 
 
-def eval_marginal_calibration(probs, probs, labels, plugin=True):
+def eval_marginal_calibration(probs, eval_probs, labels, plugin=True):
     ces = []  # Compute the calibration error per class, then take the average.
-    k = probs.shape[1]
+    k = eval_probs.shape[1]
     labels_one_hot = cal.get_labels_one_hot(np.array(labels), k)
     for c in range(k):
         probs_c = probs[:, c]
@@ -34,23 +34,23 @@ def eval_marginal_calibration(probs, probs, labels, plugin=True):
     return np.mean(ces)
 
 
-def upper_bound_marginal_calibration_unbiased(probs, probs, labels, samples=30):
-    data = list(zip(probs, probs, labels))
+def upper_bound_marginal_calibration_unbiased(probs, eval_probs, labels, samples=30):
+    data = list(zip(probs, eval_probs, labels))
     def evaluator(data):
-        probs, probs, labels = list(zip(*data))
-        probs, probs, labels = np.array(probs), np.array(probs), np.array(labels)
-        return eval_marginal_calibration(probs, probs, labels, plugin=False)
+        probs, eval_probs, labels = list(zip(*data))
+        probs, eval_probs, labels = np.array(probs), np.array(eval_probs), np.array(labels)
+        return eval_marginal_calibration(probs, eval_probs, labels, plugin=False)
     estimate = evaluator(data)
     conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
 
 
-def upper_bound_marginal_calibration_biased(probs, probs, labels, samples=30):
-    data = list(zip(probs, probs, labels))
+def upper_bound_marginal_calibration_biased(probs, eval_probs, labels, samples=30):
+    data = list(zip(probs, eval_probs, labels))
     def evaluator(data):
-        probs, probs, labels = list(zip(*data))
-        probs, probs, labels = np.array(probs), np.array(probs), np.array(labels)
-        return eval_marginal_calibration(probs, probs, labels, plugin=True)
+        probs, eval_probs, labels = list(zip(*data))
+        probs, eval_probs, labels = np.array(probs), np.array(eval_probs), np.array(labels)
+        return eval_marginal_calibration(probs, eval_probs, labels, plugin=True)
     estimate = evaluator(data)
     conf_interval = cal.bootstrap_std(data, evaluator, num_samples=samples)
     return estimate + 1.3 * conf_interval
