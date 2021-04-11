@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="uncertainty-calibration",
-    version="0.0.8",
+    version="0.0.9",
     author="Ananya Kumar",
     author_email="skywalker94@gmail.com",
     description="Utilities to calibrate model uncertainties and measure calibration.",
