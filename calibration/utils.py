@@ -504,8 +504,8 @@ def get_accuracy(probs, labels):
 
 
 def get_labels_one_hot(labels, k):
-    assert np.min(labels) == 0
-    assert np.max(labels) == k - 1
+    assert np.min(labels) >= 0
+    assert np.max(labels) <= k - 1
     num_labels = labels.shape[0]
     labels_one_hot = np.zeros((num_labels, k))
     labels_one_hot[np.arange(num_labels), labels] = 1
