@@ -314,6 +314,31 @@ def get_bin_probs(binned_data: BinnedData) -> List[float]:
     assert(abs(sum(bin_probs) - 1.0) < eps)
     return list(bin_probs)
 
+def get_bin_accuracies(prob_labels: List[float], num_bins: int=10):
+    """Seperate binary classification probabilities into
+       bins and calculate the accuracy for each bin
+
+    Args:
+        prob_labels: An array of shape (n,2), where each element is a pair of
+        (probability,label) where label is 1 the prediction was correct, 0 if incorrect
+        num_bins: the number of bins to seperate the probabilities
+
+    Returns:
+        An array of accuracies for each bin
+    """
+    prob_labels = np.array(prob_labels)
+    prob_bins = get_equal_prob_bins(prob_labels, num_bins)
+    binned_data = bin(prob_labels, prob_bins)
+    assert(len(binned_data) == num_bins)
+    accuracies = []
+    for b in binned_data:
+        b = np.array(b)
+        if len(b) == 0:
+            accuracies.append(0.0)
+        else:
+            accuracies.append(np.mean(b[:,1]))
+    return accuracies
+
 
 def plugin_ce(binned_data: BinnedData, power=2) -> float:
     def bin_error(data: Data):
