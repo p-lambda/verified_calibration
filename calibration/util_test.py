@@ -249,5 +249,19 @@ class TestUtilMethods(unittest.TestCase):
         true_ece = 0.15
         self.assertAlmostEqual(pred_ece, true_ece)
 
+    def test_get_bin_accuracies(self):
+        prob_labels = np.array([[0.2, 0],
+                        [0.2, 1],
+                        [0.6, 1],
+                        [0.6, 0],
+                        [0.7, 0],
+                        [0.7, 1],
+                        [0.7, 1],
+                        [0.7, 1]])
+        accuracies = get_bin_accuracies(prob_labels)
+        true_accuracies = [0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 0.75, 0.0, 0.0, 0.0]
+        self.assertEqual(accuracies, true_accuracies)
+
+
 if __name__ == '__main__':
     unittest.main()
