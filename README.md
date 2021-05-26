@@ -6,6 +6,7 @@ Motivating example for uncertainty calibration: Calster and Vickers 2015 train a
 
 *The high level point here is that the uncertainties that models output matter, not just the model's accuracy*. Calibration is a popular way to measure the quality of a model's uncertainties, and recalibration is a way to take an existing model and correct its uncertainties to make them better.
 
+This library focuses on calibration for classification tasks. For regression tasks you could check out: https://github.com/uncertainty-toolbox/uncertainty-toolbox
 
 ## Installation
 
