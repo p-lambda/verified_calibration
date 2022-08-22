@@ -1,7 +1,7 @@
 import unittest
 from parameterized import parameterized
-from utils import *
-from utils import _get_ce
+from calibration.utils import *
+from calibration.utils import _get_ce
 import numpy as np
 
 
@@ -244,10 +244,58 @@ class TestUtilMethods(unittest.TestCase):
         pred_ece = get_ece(probs, labels, num_bins=3)
         self.assertAlmostEqual(pred_ece, true_ece)
 
+    @parameterized.expand([
+        [[0.1], [1], 1, 0.9],
+        [[0.1], [0], 1, 0.1],
+        [[0.1, 0.7], [0, 1], 1, 0.1],
+        [[0.7, 0.1], [1, 0], 1, 0.1],
+        [[0.1, 0.7, 0.4], [0, 0, 0], 1, 0.4],
+        [[0.1, 0.9], [0, 1], 1, 0.0],
+        [[0.1, 0.7], [0, 1], 2, 0.2],
+        [[0.1, 0.1, 0.7], [0, 1, 1], 2, 0.4*2/3+0.3*1/3],
+        [[0.1, 0.1, 0.1, 0.1, 0.7], [0, 1, 0, 0, 1], 2, 0.15*4/5+0.3*1/5],
+        [[0.1, 0.7, 0.5, 0.9], [0, 1, 0, 1], 2, 0.25],
+        [[0.1, 0.7, 0.5, 0.9], [0, 1, 0, 1], 4, 0.25],
+        [[0.1, 0.7, 0.5, 0.9], [0, 1, 1, 1], 2, 0.2],
+        [[0.1, 0.7, 0.5, 0.9], [0, 1, 1, 1], 4, 0.25],
+    ])
+    def test_1d_ece_em(self, probs, correct, num_bins, true_ece):
+        pred_ece = get_ece_em(probs, correct, num_bins=num_bins)
+        self.assertAlmostEqual(pred_ece, true_ece)
+
     def test_missing_classes_ece(self):
         pred_ece = get_ece([[0.9,0.1], [0.8,0.2]], [0,0])
         true_ece = 0.15
         self.assertAlmostEqual(pred_ece, true_ece)
+
+    def test_missing_class_binary_ece(self):
+        pred_ece = get_ece([0.9, 0.1, 0.3], [0, 0, 0], num_bins=1)
+        true_ece = 1.3 / 3
+        self.assertAlmostEqual(pred_ece, true_ece)
+        pred_ece = get_ece([0.9, 0.1, 0.3], [1, 1, 1], num_bins=1)
+        true_ece = 1.7 / 3
+        self.assertAlmostEqual(pred_ece, true_ece)
+
+    @parameterized.expand([
+        [[0.1], [1], 1.0, 1.0],
+        [[0.6], [0], 0.0, 0.0],
+        [[0.3, 0.9], [0, 1], 0.75, 1.0],
+        [[0.9, 0.3], [1, 0], 0.75, 1.0],
+        [[0.3, 0.9], [1, 0], 0.25, 0.0],
+        [[0.6, 0.0, 0.8], [1, 0, 1], 8/9.0, 1.0],
+        [[0.6, 0.0, 0.8], [1, 1, 1], 1.0, 1.0],
+        [[0.6, 0.0, 0.8], [0, 0, 0], 0.0, 0.0],
+        [[0.6, 0.0, 0.8], [0, 0, 1], 11/18.0, 1.0],
+        [[0.6, 0.0, 0.8], [0, 1, 0], 1/9.0, 0.0],
+        [[0.1]*10+[0.6,0.7], [0]*10+[0,0], 0.0, 0.0],
+        [[0.1]*10+[0.6,0.7], [0]*10+[0,1], np.mean(1.0/np.arange(1,13)), 0.5],
+        [[0.1]*10+[0.6,0.7], [0]*10+[1,0], np.mean(1.0/np.arange(1,13))-1.0/12, 0.5],
+        [[0.1]*9+[0.5,0.6,0.7], [0]*9+[1,0,0], np.mean(1.0/np.arange(1,13))-1.5/12, 0.0]
+    ])
+    def test_selective_stats(self, probs, correct, sel_acc, sel_90):
+        pred_sel_acc, pred_sel_90 = get_selective_stats(probs, correct)
+        self.assertAlmostEqual(sel_acc, pred_sel_acc)
+        self.assertAlmostEqual(sel_90, pred_sel_90)
 
 if __name__ == '__main__':
     unittest.main()

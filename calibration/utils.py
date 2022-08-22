@@ -192,8 +192,28 @@ def get_binning_ce(probs, labels, p=2, debias=True, mode='marginal'):
 
 
 def get_ece(probs, labels, debias=False, num_bins=15, mode='top-label'):
+    """Get ECE as computed by Guo et al."""
     return lower_bound_scaling_ce(probs, labels, p=1, debias=debias, num_bins=num_bins,
                                   binning_scheme=get_equal_prob_bins, mode=mode)
+
+
+def get_ece_em(probs, labels, debias=False, num_bins=15, mode='top-label'):
+    """Get ECE, but use equal mass binning."""
+    return lower_bound_scaling_ce(probs, labels, p=1, debias=debias, num_bins=num_bins,
+                                  binning_scheme=get_equal_bins, mode=mode)
+
+
+def get_selective_stats(probs, correct):
+    """Return area under coverage-accuracy curve, and acc for 10% most confident predictions."""
+    # Sort in descending order.
+    probs = np.array(probs)
+    correct = np.array(correct)
+    sort_indices = np.argsort(-probs)
+    sorted_correct = correct[sort_indices]
+    accs = np.cumsum(sorted_correct) / np.arange(1, len(sorted_correct) + 1)
+    coverage_acc_area = np.mean(accs)
+    acc_percentile_90 = accs[int(0.1 * len(sorted_correct))]
+    return coverage_acc_area, acc_percentile_90
 
 
 def _get_ce(probs, labels, p, debias, num_bins, binning_scheme, mode='marginal'):
@@ -224,7 +244,7 @@ def _get_ce(probs, labels, p, debias, num_bins, binning_scheme, mode='marginal')
         raise ValueError('labels and probs should have the same number of entries.')
     if len(probs.shape) == 1:
         # If 1D (2-class setting), compute the regular calibration error.
-        if np.min(labels) != 0 or np.max(labels) != 1:
+        if np.min(labels) < 0 or np.max(labels) > 1:
             raise ValueError('If probs is 1D, each label should be 0 or 1.')
         return ce_1d(probs, labels)
     elif len(probs.shape) == 2:
