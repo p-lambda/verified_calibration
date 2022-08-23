@@ -253,6 +253,11 @@ class TestUtilMethods(unittest.TestCase):
         true_ece = 4/6.0 * (1 - (0.8+0.85+0.9+1.0)/4)
         pred_ece = get_ece(probs, labels, num_bins=3)
         self.assertAlmostEqual(pred_ece, true_ece)
+        probs = [0.6, 0.7, 0.8, 0.9]
+        labels = [0, 0, 1, 1]
+        pred_ece = get_ece(probs, labels, num_bins=2)
+        true_ece = 0.25
+        self.assertAlmostEqual(pred_ece, true_ece)
 
     @parameterized.expand([
         [[0.1], [1], 1, 0.9],
@@ -266,12 +271,17 @@ class TestUtilMethods(unittest.TestCase):
         [[0.1, 0.1, 0.1, 0.1, 0.7], [0, 1, 0, 0, 1], 2, 0.15*4/5+0.3*1/5],
         [[0.1, 0.7, 0.5, 0.9], [0, 1, 0, 1], 2, 0.25],
         [[0.1, 0.7, 0.5, 0.9], [0, 1, 0, 1], 4, 0.25],
+        [[0.6, 0.7, 0.8, 0.9], [0, 0, 1, 1], 2, 0.4],
         [[0.1, 0.7, 0.5, 0.9], [0, 1, 1, 1], 2, 0.2],
         [[0.1, 0.7, 0.5, 0.9], [0, 1, 1, 1], 4, 0.25],
     ])
     def test_1d_ece_em(self, probs, correct, num_bins, true_ece):
         pred_ece = get_ece_em(probs, correct, num_bins=num_bins)
         self.assertAlmostEqual(pred_ece, true_ece)
+        # If number of bins is 1, then test that the regular ece is the same too.
+        if num_bins == 1:
+            pred_ece_ew = get_ece(probs, correct, num_bins=num_bins)
+            self.assertAlmostEqual(pred_ece_ew, true_ece)
 
     def test_missing_classes_ece(self):
         pred_ece = get_ece([[0.9,0.1], [0.8,0.2]], [0,0])
