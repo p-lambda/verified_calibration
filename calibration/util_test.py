@@ -54,6 +54,16 @@ class TestUtilMethods(unittest.TestCase):
         bins = np.array(get_equal_bins(probs, num_bins=3))
         self.assertTrue(np.allclose(bins, np.array([0.55, 0.85, 1.0])))
 
+    def test_equal_bins_more_bins_points(self):
+        probs = [0.3]
+        bins = get_equal_bins(probs, num_bins=2)
+        self.assertEqual(bins, [1.0])
+        bins = get_equal_bins(probs, num_bins=5)
+        self.assertEqual(bins, [1.0])
+        probs = [0.3, 0.5]
+        bins = get_equal_bins(probs, num_bins=5)
+        self.assertEqual(bins, [0.4, 1.0])
+    
     def test_get_1_equal_prob_bins(self):
         probs = [0.3, 0.5, 0.2, 0.3, 0.5, 0.7]
         bins = get_equal_prob_bins(probs, num_bins=1)

@@ -28,6 +28,8 @@ def split(sequence: List[T], parts: int) -> List[List[T]]:
 def get_equal_bins(probs: List[float], num_bins: int=10) -> Bins:
     """Get bins that contain approximately an equal number of data points."""
     sorted_probs = sorted(probs)
+    if num_bins > len(sorted_probs):
+        num_bins = len(sorted_probs)
     binned_data = split(sorted_probs, num_bins)
     bins: Bins = []
     for i in range(len(binned_data) - 1):
