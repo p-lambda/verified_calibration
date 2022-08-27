@@ -52,7 +52,7 @@ class TestUtilMethods(unittest.TestCase):
     def test_get_3_equal_bins_uneven_sizes(self):
         probs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         bins = np.array(get_equal_bins(probs, num_bins=3))
-        self.assertTrue(np.allclose(bins, np.array([0.55, 0.85, 1.0])))
+        self.assertTrue(np.allclose(bins, np.array([0.55, 0.75, 1.0])))
 
     def test_equal_bins_more_bins_points(self):
         probs = [0.3]
@@ -63,6 +63,12 @@ class TestUtilMethods(unittest.TestCase):
         probs = [0.3, 0.5]
         bins = get_equal_bins(probs, num_bins=5)
         self.assertEqual(bins, [0.4, 1.0])
+
+    def test_equal_bin_num_bins(self):
+        for n in [1,2,3,5,10,20]:
+            for num_bins in range(1,n):
+                bins = split(np.arange(n) / float(n), num_bins)
+                self.assertEqual(len(bins), num_bins)
     
     def test_get_1_equal_prob_bins(self):
         probs = [0.3, 0.5, 0.2, 0.3, 0.5, 0.7]
@@ -101,6 +107,18 @@ class TestUtilMethods(unittest.TestCase):
         self.assertEqual(get_bin(0.0, bins), 0)
         self.assertEqual(get_bin(0.5, bins), 0)
         self.assertEqual(get_bin(1.0, bins), 0)
+
+    def test_bin_all_same(self):
+        for n in range(1,10):
+            for num_bins in range(1,min(3,n)):
+                data = [(0.5, 1.0)] * n
+                probs = [p for p, y in data]
+                bins = get_equal_bins(probs, num_bins=num_bins)
+                binned_data = bin(data, bins)
+                self.assertTrue(
+                    np.all(np.array(binned_data[0]) == np.array(data)))
+                for j in range(1, num_bins):
+                    self.assertEqual(len(binned_data[j]), 0)
 
     def test_bin(self):
         data = [(0.3, 1.0), (0.5, 0.0), (0.2, 1.0), (0.3, 0.0), (0.5, 1.0), (0.7, 0.0)]

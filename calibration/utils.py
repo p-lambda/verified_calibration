@@ -19,11 +19,10 @@ eps = 1e-6
 
 def split(sequence: List[T], parts: int) -> List[List[T]]:
     assert parts <= len(sequence)
-    part_size = int(np.ceil(len(sequence) * 1.0 / parts))
-    assert part_size * parts >= len(sequence)
-    assert (part_size - 1) * parts < len(sequence)
-    return [sequence[i:i + part_size] for i in range(0, len(sequence), part_size)]
-
+    array_splits = np.array_split(sequence, parts)
+    splits = [list(l) for l in array_splits]
+    assert len(splits) == parts
+    return splits
 
 def get_equal_bins(probs: List[float], num_bins: int=10) -> Bins:
     """Get bins that contain approximately an equal number of data points."""
