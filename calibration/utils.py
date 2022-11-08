@@ -453,7 +453,7 @@ def bootstrap_std(data: List[T], estimator=None, num_samples=100) -> Tuple[float
 
 # Re-Calibration utilities.
 
-def get_platt_scaler(model_probs, labels):
+def get_platt_scaler(model_probs, labels, get_clf=False):
     clf = LogisticRegression(C=1e10, solver='lbfgs')
     eps = 1e-12
     model_probs = model_probs.astype(dtype=np.float64)
@@ -468,6 +468,8 @@ def get_platt_scaler(model_probs, labels):
         x = x * clf.coef_[0] + clf.intercept_
         output = 1 / (1 + np.exp(-x))
         return output
+    if get_clf:
+        return calibrator, clf
     return calibrator
 
 
