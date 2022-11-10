@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="uncertainty-calibration",
-    version="0.1.3",
+    version="0.1.4",
     author="Ananya Kumar",
     author_email="skywalker94@gmail.com",
     description="Utilities to calibrate model uncertainties and measure calibration.",
@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/AnanyaKumar/verified_calibration",
     packages=setuptools.find_packages(),
-    install_requires=['numpy', 'sklearn', 'parameterized'],
+    install_requires=['numpy', 'scikit-learn', 'parameterized'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
